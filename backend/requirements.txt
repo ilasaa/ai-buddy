@@ -1,0 +1,12 @@
+# Основные библиотеки backend
+fastapi[standard]
+SQLAlchemy>=2.1,<2.2
+psycopg[binary]
+alembic
+pydantic-settings
+
+# Инструменты для тестирования и проверки кода
+pytest
+pytest-cov
+httpx
+ruff
