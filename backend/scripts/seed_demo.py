@@ -23,6 +23,14 @@ def seed():
             )
             db.add(team)
             db.flush()
+        if not db.scalar(select(Team).where(Team.name == "Analytics · Demo")):
+            db.add(
+                Team(
+                    name="Analytics · Demo",
+                    description="Синтетическая команда для проверки доступа к RAG",
+                )
+            )
+            db.flush()
         people = {}
         for role, name in [
             ("manager", "Анна Петрова"),

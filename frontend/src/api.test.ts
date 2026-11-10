@@ -20,3 +20,15 @@ test("request sends credentials, custom CSRF header and JSON", async () => {
     }),
   );
 });
+
+test("network errors are safe and localized", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => {
+      throw new TypeError("Failed to fetch");
+    }),
+  );
+  await expect(request("/assistant/conversations")).rejects.toThrow(
+    "Не удалось связаться с сервером",
+  );
+});

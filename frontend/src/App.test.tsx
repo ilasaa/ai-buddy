@@ -110,7 +110,7 @@ function mount(path = "/") {
 test("private route shows login, password toggle and successful login", async () => {
   mount();
   expect(screen.getByRole("status")).toBeInTheDocument();
-  await screen.findByRole("heading", { name: "Рады знакомству 👋" });
+  await screen.findByRole("heading", { name: "Рады знакомству" });
   const user = userEvent.setup();
   await user.type(screen.getByLabelText("Рабочий email"), "intern@example.com");
   await user.type(screen.getByLabelText("Пароль"), "password");
@@ -118,7 +118,7 @@ test("private route shows login, password toggle and successful login", async ()
   expect(screen.getByLabelText("Пароль")).toHaveAttribute("type", "text");
   await user.click(screen.getByRole("button", { name: "Скрыть пароль" }));
   await user.click(screen.getByRole("button", { name: "Войти" }));
-  await screen.findByRole("heading", { name: "Привет, Алексей! 👋" });
+  await screen.findByRole("heading", { name: "Привет, Алексей!" });
   expect(screen.getByText("Дмитрий Смирнов")).toBeInTheDocument();
   expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
 });
@@ -139,7 +139,7 @@ test("authenticated login redirects and logout removes private content", async (
   mount("/login");
   await screen.findByText("Дмитрий Смирнов");
   await userEvent.click(screen.getByLabelText("Выйти из аккаунта"));
-  await screen.findByRole("heading", { name: "Рады знакомству 👋" });
+  await screen.findByRole("heading", { name: "Рады знакомству" });
   expect(screen.queryByText("Дмитрий Смирнов")).not.toBeInTheDocument();
 });
 test("task update refreshes progress and supports descriptions", async () => {
@@ -218,9 +218,7 @@ test.each(["mentor", "manager"] as const)(
   },
 );
 test.each([
-  ["/assistant", "Ваш AI-buddy уже в пути"],
   ["/requests", "Мои заявки"],
-  ["/knowledge", "База знаний"],
   ["/missing", "Страница не найдена"],
 ])("placeholder %s", async (path, title) => {
   loggedIn = true;
@@ -229,7 +227,7 @@ test.each([
   await userEvent.click(
     screen.getByRole("link", { name: /Вернуться на главную/ }),
   );
-  await screen.findByRole("heading", { name: "Привет, Алексей! 👋" });
+  await screen.findByRole("heading", { name: "Привет, Алексей!" });
 });
 test("navigation and mobile menu", async () => {
   loggedIn = true;

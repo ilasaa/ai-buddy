@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { request, type Profile } from "../api";
 import { roles } from "../labels";
+import { ThemeToggle } from "./ThemeToggle";
 import { Brand } from "./Brand";
 const navigation = [
   { to: "/", label: "Главная", icon: Home },
@@ -31,7 +32,7 @@ export function Layout({ user }: { user: Profile }) {
     mutationFn: () => request<void>("/auth/logout", "POST"),
     onSuccess: async () => {
       await cache.cancelQueries();
-      cache.removeQueries({ queryKey: ["onboarding"] });
+      cache.removeQueries({ predicate: (query) => query.queryKey[0] !== "me" });
       cache.setQueryData(["me"], null);
     },
   });
@@ -66,7 +67,6 @@ export function Layout({ user }: { user: Profile }) {
             >
               <item.icon size={20} />
               {item.label}
-              {item.to === "/assistant" && <span className="soon-dot" />}
             </NavLink>
           ))}
         </nav>
@@ -103,6 +103,7 @@ export function Layout({ user }: { user: Profile }) {
             </strong>
           </div>
           <div className="user-menu">
+            <ThemeToggle />
             <span className="avatar">
               {user.full_name
                 .split(" ")

@@ -5,7 +5,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: "http://127.0.0.1:8000",
+        target: process.env.AI_BUDDY_API_TARGET ?? "http://127.0.0.1:8000",
         changeOrigin: false,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },

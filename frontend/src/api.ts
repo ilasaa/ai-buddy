@@ -42,15 +42,23 @@ export async function request<T>(
   method = "GET",
   body?: unknown,
 ): Promise<T> {
-  const response = await fetch(`/api${path}`, {
-    method,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "AI-buddy",
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, {
+      method,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Requested-With": "AI-buddy",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(
+      0,
+      "Не удалось связаться с сервером. Проверьте соединение и повторите запрос.",
+    );
+  }
   if (!response.ok) {
     const data = (await response.json().catch(() => null)) as {
       detail?: unknown;

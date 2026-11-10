@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
 import { ApiError, request, type Profile } from "../api";
 import { useProfile } from "../session";
+import { ThemeToggle } from "../components/ThemeToggle";
 import { Brand } from "../components/Brand";
 import { Feedback } from "../components/Feedback";
 export function Login() {
@@ -16,7 +17,7 @@ export function Login() {
     mutationFn: () =>
       request<Profile>("/auth/login", "POST", { email, password }),
     onSuccess: (user) => {
-      cache.removeQueries({ queryKey: ["onboarding"] });
+      cache.removeQueries({ predicate: (query) => query.queryKey[0] !== "me" });
       cache.setQueryData(["me"], user);
     },
   });
@@ -30,6 +31,9 @@ export function Login() {
   }
   return (
     <main className="login">
+      <div className="login-theme">
+        <ThemeToggle />
+      </div>
       <section className="login-story">
         <Brand />
         <div>
@@ -58,7 +62,7 @@ export function Login() {
       <section className="login-form">
         <form onSubmit={submit}>
           <span className="pill">ВАШ ЛИЧНЫЙ КАБИНЕТ</span>
-          <h2>Рады знакомству 👋</h2>
+          <h2>Рады знакомству</h2>
           <p>Войдите, чтобы продолжить свой путь в команде.</p>
           <label htmlFor="email">Рабочий email</label>
           <input

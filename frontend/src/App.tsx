@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { Assistant } from "./pages/Assistant";
+import { Knowledge } from "./pages/Knowledge";
 import { ApiError } from "./api";
 import { useProfile } from "./session";
 import { Layout } from "./components/Layout";
@@ -23,15 +25,7 @@ export function App() {
       <Route element={<Protected />}>
         <Route index element={<Dashboard />} />
         <Route path="onboarding" element={<Dashboard all />} />
-        <Route
-          path="assistant"
-          element={
-            <Placeholder
-              title="Ваш AI-buddy уже в пути"
-              description="ИИ-помощник появится в следующей версии. Чат, поиск по знаниям и корпоративные инструменты ещё не подключены."
-            />
-          }
-        />
+        <Route path="assistant" element={<Assistant />} />
         <Route
           path="requests"
           element={
@@ -41,15 +35,8 @@ export function App() {
             />
           }
         />
-        <Route
-          path="knowledge"
-          element={
-            <Placeholder
-              title="База знаний"
-              description="Здесь появятся материалы для знакомства с командой. Корпоративные источники ещё не подключены."
-            />
-          }
-        />
+        <Route path="knowledge" element={<Knowledge />} />
+        <Route path="knowledge/:documentId" element={<Knowledge />} />
         <Route
           path="*"
           element={

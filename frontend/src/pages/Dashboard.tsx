@@ -50,9 +50,7 @@ export function Dashboard({ all = false }: { all?: boolean }) {
             {all ? "ВАШ ПЕРСОНАЛЬНЫЙ ПЛАН" : "РАСТЁМ ВМЕСТЕ, ШАГ ЗА ШАГОМ"}
           </span>
           <h1>
-            {all
-              ? "Моя адаптация"
-              : `Привет, ${user.full_name.split(" ")[0]}! 👋`}
+            {all ? "Моя адаптация" : `Привет, ${user.full_name.split(" ")[0]}!`}
           </h1>
           <p>
             {all
@@ -72,13 +70,13 @@ export function Dashboard({ all = false }: { all?: boolean }) {
             <span className="assistant-icon">
               <Sparkles size={24} />
             </span>
-            <span className="assistant-tag">ВАШ БУДУЩИЙ ПОМОЩНИК</span>
+            <span className="assistant-tag">ВАШ ИИ-НАСТАВНИК</span>
           </div>
           <h2>Спроси AI-buddy</h2>
           <p>
-            Не знаешь, что делать дальше?
+            Вопросы о задачах, инструментах и команде.
             <br />
-            Скоро здесь появится ИИ-помощник.
+            Ответы с учётом вашего плана и базы знаний.
           </p>
           <Link className="assistant-link" to="/assistant">
             Открыть помощника <ArrowRight size={17} />
@@ -189,8 +187,7 @@ export function Dashboard({ all = false }: { all?: boolean }) {
         </div>
       </section>
       <div className="closing-note">
-        <span>✦</span> Не обязательно знать всё сразу. Главное — продолжать
-        двигаться вперёд.
+        Не обязательно знать всё сразу. Главное — продолжать двигаться вперёд.
       </div>
     </>
   );

@@ -8,7 +8,9 @@ import { ApiError, request, type Profile } from "./api";
 function sessionError(error: Error) {
   if (error instanceof ApiError && error.status === 401) {
     queryClient.setQueryData(["me"], null);
-    queryClient.removeQueries({ queryKey: ["onboarding"] });
+    queryClient.removeQueries({
+      predicate: (query) => query.queryKey[0] !== "me",
+    });
   }
 }
 export const queryClient = new QueryClient({
