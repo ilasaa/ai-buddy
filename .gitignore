@@ -21,3 +21,9 @@ dist/
 
 # OS
 .DS_Store
+# Generated reports
+coverage/
+coverage.json
+*.tsbuildinfo
+
+.cache/

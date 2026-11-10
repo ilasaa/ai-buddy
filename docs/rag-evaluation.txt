@@ -1,0 +1,70 @@
+{
+  "model": "intfloat/multilingual-e5-small",
+  "cases": [
+    {
+      "question": "Как получить доступ к GitLab?",
+      "score": 0.88985,
+      "top_document": "access_requests.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Где запросить права на репозиторий?",
+      "score": 0.85624,
+      "top_document": "gitlab_access.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Как у нас проводят Code Review?",
+      "score": 0.86311,
+      "top_document": "code_review.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Что нужно сделать в первую неделю?",
+      "score": 0.87005,
+      "top_document": "first_day.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какие правила работы с ветками Git?",
+      "score": 0.88936,
+      "top_document": "git_workflow.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Как подготовиться к встрече с наставником?",
+      "score": 0.87506,
+      "top_document": "mentor_meetings.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какой в нашей компании лимит на оплату парковки?",
+      "score": 0.7835,
+      "top_document": "communication.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какая корпоративная политика перевозки домашних животных?",
+      "score": 0.77846,
+      "top_document": "communication.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Где внутренний регламент бронирования частного самолёта?",
+      "score": 0.79261,
+      "top_document": "communication.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какой размер корпоративной компенсации за покупку велосипеда?",
+      "score": 0.7824,
+      "top_document": "communication.md",
+      "expected_retrieved": true
+    }
+  ],
+  "max_negative": 0.7926085906904432,
+  "min_positive": 0.8562430385655615,
+  "recommended_threshold": 0.824426,
+  "note": "Small synthetic calibration set; not a production guarantee."
+}
+RAG_MIN_SCORE=0.824426
