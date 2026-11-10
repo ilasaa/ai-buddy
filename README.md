@@ -12,20 +12,22 @@
 ## Стек и структура
 
 Python 3.14, FastAPI, SQLAlchemy 2.1, PostgreSQL 17, Alembic, Pydantic, pwdlib/Argon2, PyJWT,
-Pytest/pytest-cov. Frontend: React 19, TypeScript, Vite, React Router, TanStack Query,
+Pytest/pytest-cov, OpenAI-совместимый клиент DeepSeek, Sentence Transformers, CPU PyTorch и pgvector.
+Frontend: React 19, TypeScript, Vite, React Router, TanStack Query,
 Lucide, обычный CSS; Vitest и React Testing Library.
 
 ```text
 backend/
   app/
-    api/          # HTTP: auth, teams, onboarding
-    services/     # аутентификация, область доступа, прогресс и смена статуса
-    models/       # User, Team, OnboardingTask
+    api/          # HTTP: auth, teams, onboarding, assistant, knowledge
+    services/     # авторизация, адаптация, LLM, embeddings, RAG, индексация
+    models/       # пользователи, команды, задачи, диалоги, документы и векторы
     schemas/      # Pydantic запросы и ответы
     core/         # окружение
     db/           # SQLAlchemy сессии
   alembic/versions/
-  scripts/        # seed_demo, migrate_test
+  scripts/        # seed, миграция тестовой БД, preload, индексация, оценка RAG, smoke
+  knowledge/      # 12 синтетических Markdown-инструкций и контрольные вопросы
   tests/
 frontend/
   src/
@@ -36,7 +38,7 @@ frontend/
     App.tsx       # маршруты и защита
     styles.css
   package-lock.json
-docs/             # правила доступа и место для будущих SDD
+docs/             # правила доступа, SDD, подготовка pgvector, отчёты и скриншоты
 compose.yaml
 .env.example
 ```
@@ -47,7 +49,8 @@ compose.yaml
 Все команды ниже выполняются из корня, кроме явно указанных переходов.
 
 ```bash
-cp .env.example .env
+# Только при первой настройке; существующий .env не перезаписывать:
+cp -n .env.example .env
 python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
 ```
 
@@ -58,6 +61,11 @@ python3 -c 'import secrets; print(secrets.token_urlsafe(48))'
 ALLOWED_ORIGINS — JSON-массив точных адресов frontend без завершающего `/`.
 
 ## 2. PostgreSQL
+
+Для новой локальной установки Compose использует PostgreSQL 17 с pgvector. Если контейнер
+создавался на прежнем образе без расширения, сначала выполните
+[переход с резервной копией](docs/pgvector-setup.md); простой запуск ниже предназначен для
+новой установки или уже подготовленного сервера. Существующий volume сохраняется.
 
 ```bash
 docker compose up -d db
@@ -85,15 +93,23 @@ sudo docker compose exec db sh -c 'createdb -U "$POSTGRES_USER" ai_buddy_test'
 cd backend
 python3.14 -m venv .venv
 source .venv/bin/activate
+# Установить CPU PyTorch первым, чтобы не скачивать GPU-зависимости:
+pip install --index-url https://download.pytorch.org/whl/cpu torch
 pip install -r requirements.txt
 alembic upgrade head
 python -m scripts.migrate_test
 ```
 
-Новая миграция `c28e67a901af` следует за неизменённой `b09d2d5a1a04`.
-Добавляет users.password_hash (nullable), is_active, created_at и onboarding_tasks с индексом
-по user_id, FK и CHECK. Существующие записи сохраняются; старым пользователям пароль
-автоматически не назначается. `migrate_test` использует только ai_buddy_test.
+Цепочка миграций:
+
+- `b09d2d5a1a04`: исходные пользователи и команды.
+- `c28e67a901af`: password_hash, is_active, created_at и onboarding_tasks.
+- `d39f72b8a012`: диалоги, сообщения и учёт попыток обращения к чату.
+- `e4a81c093bd2`: расширение vector, документы и фрагменты с VECTOR(384).
+
+Существующие записи сохраняются; старым пользователям пароль автоматически не назначается.
+Последняя миграция требует установленного на сервере pgvector и прав CREATE EXTENSION.
+`migrate_test` применяет ту же цепочку только к ai_buddy_test.
 
 ## 4. Демонстрационные аккаунты
 
@@ -118,6 +134,11 @@ DEMO_PASSWORD='Buddy-demo-2026!' python -m scripts.seed_demo
 `python -m scripts.seed_demo` и `unset DEMO_PASSWORD`.
 
 ## 5. Запуск
+
+Для полноценного чата перед запуском настройте DEEPSEEK_API_KEY в `.env`, скачайте E5 и
+проиндексируйте инструкции по разделу «CPU-модель и индексация» ниже. Сначала должны быть
+применены все миграции и выполнен seed. Без DeepSeek доступен кабинет; чат вернёт понятную
+ошибку конфигурации. После изменения `.env` перезапустите backend.
 
 Терминал backend из `backend/` с активным окружением:
 
@@ -155,7 +176,8 @@ npm run dev
 
 ## Тесты, типизация и покрытие
 
-Тесты backend всегда подключаются к отдельной `ai_buddy_test` с теми же реквизитами БД.
+Интеграционные тесты backend подключаются к отдельной `ai_buddy_test` с теми же реквизитами БД.
+Unit-тесты индексации используют изолированную SQLite; сервисы LLM подменяются.
 Транзакции откатываются после каждого теста; production engine не используется фикстурами.
 Сначала создайте тестовую БД и примените миграции, как описано выше.
 
@@ -188,7 +210,7 @@ Frontend-тесты используют имитацию HTTP, backend API-те
 
 - Расширение ИИ-оценок и разрешённые корпоративные инструменты: [SDD](docs/specs/README.md).
 - Кабинеты наставника/руководителя, подтверждаемые задачи, этапы и шаблоны адаптации.
-- Реальные заявки и база знаний, корпоративный SSO, восстановление пароля.
+- Интеграции реальных источников знаний и заявок, корпоративный SSO, восстановление пароля.
 - Централизованный отзыв JWT, rate limiting и аудит перед production-развёртыванием.
 
 JWT logout удаляет cookie; уже скопированный токен действует до TTL. Интерфейс показывает
@@ -240,8 +262,9 @@ CHAT_HISTORY_CHARS=12000
 Перед применением новой vector-миграции выполните
 [безопасный переход с резервной копией](docs/pgvector-setup.md). Образ PostgreSQL 17 заменён
 на `pgvector/pgvector:pg17-bookworm`, имя и путь постоянного volume сохранены. Не запускайте
-`docker compose down -v`. В текущем окружении extension пока не установлен, поэтому
-`e4a81c093bd2` не применялась. Миграция чата `d39f72b8a012` уже применена.
+`docker compose down -v`. В текущем локальном окружении pgvector уже доступен и документы
+проиндексированы. На новой установке всё равно выполните `alembic upgrade head` для основной БД
+и `python -m scripts.migrate_test` для тестовой.
 
 ### CPU-модель и индексация
 
@@ -272,7 +295,9 @@ cosine-поиск с SQL-фильтром public OR team_id=current_user.team_id
 заново и задайте рекомендованный порог в `.env`. Это небольшая проверочная выборка, а не
 гарантия качества для произвольного вопроса. Без порога запросы к базе знаний возвращают 503.
 
-Индексация идемпотентна: SHA-256 учитывает содержимое, имя модели и версию chunking.
+Индексация идемпотентна: SHA-256 учитывает содержимое, имя модели и версию chunking (`chunks-v2`).
+Название документа сохраняется во фрагментах; короткое вступление объединяется с правилами,
+чтобы поиск не возвращал только заголовок с дисклеймером.
 Неизменившиеся документы пропускаются без embeddings. Каждый изменённый файл обрабатывается
 отдельной транзакцией, старые фрагменты заменяются только после успешного вычисления новых.
 Удалённые с диска документы автоматически из БД не удаляются. Одновременно запускайте один
@@ -295,7 +320,9 @@ scope: public
 Для ограничения командой вместо public укажите `scope: team:Backend · Demo` или точное имя
 существующей команды. Неизвестная область/команда отклоняется безопасно. Выполните
 `python -m scripts.index_knowledge`, затем калибровку. 12 demo-инструкций включают общие,
-Backend и закрытый документ Analytics для проверки ACL. Все они синтетические и не являются
+Backend и закрытый документ Analytics для проверки ACL. Текущий индекс содержит 18 фрагментов.
+Инструкции включают примеры заявок, чек-листы Code Review, работу с замечаниями и типовые
+ошибки настройки. Все они синтетические и не являются
 внутренними регламентами Авито.
 
 ### API и проверка реального чата
@@ -323,7 +350,9 @@ document_id, chunk_id, title, source и cosine score. Посмотреть пр�
 python -m scripts.smoke_deepseek --allow-paid-request
 ```
 
-В ходе разработки он не запускался. Ввод вопроса в рабочем чате также расходует баланс.
+Этот отдельный скрипт в ходе разработки не запускался. Реальный ответ DeepSeek через чат
+подтверждён по сохранённой статистике токенов; тесты и переиндексация платный API не вызывают.
+Ввод вопроса в рабочем чате расходует баланс.
 
 ### Тесты второй итерации
 
@@ -347,6 +376,8 @@ unit-тесты атомарной индексации используют и�
 небольшая калибровочная выборка, отсутствие streaming и инструментов выполнения действий,
 централизованного денежного лимита и пагинации длинных историй.
 
-Итог второй итерации: backend 65 passed / 2 skipped, 98,65% строк; frontend 32 passed,
-98,70% строк. Отдельный тест реальной E5: 1 passed.
+Последняя проверка после исправления разбиения: backend **67 passed / 1 skipped**, **98,66% строк**.
+Пропущен opt-in local_model, который ранее отдельно прошёл; pgvector-интеграция проходит.
+Последняя frontend-проверка: **32 passed**,
+**98,70% строк**. Отдельный тест реальной E5: 1 passed.
 [Подробный отчёт, ограничения и список новых файлов](docs/verification-iteration2.md).
