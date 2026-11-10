@@ -1,4 +1,49 @@
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  env_file: .env
+  environment:
+    POSTGRES_HOST: db
+    POSTGRES_PORT: 5432
+    EMBEDDING_CACHE_DIR: /app/.cache/huggingface
+    EMBEDDING_LOCAL_ONLY: "true"
+  volumes:
+    - embedding_cache:/app/.cache/huggingface
+
 services:
+  init:
+    <<: *backend
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["sh", "scripts/docker-init.sh"]
+
+  backend:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
   db:
     image: pgvector/pgvector:pg17-bookworm
     container_name: ai_buddy_db
@@ -26,3 +71,4 @@ services:
 
 volumes:
   postgres_data:
+  embedding_cache:

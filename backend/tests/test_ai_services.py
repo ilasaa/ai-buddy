@@ -30,6 +30,7 @@ def test_validation_and_intents():
 
 
 def test_llm_missing_key(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", SecretStr(""))
     monkeypatch.setattr(settings, "deepseek_api_key", SecretStr(""))
     with pytest.raises(HTTPException) as e:
         llm.client()
@@ -47,6 +48,8 @@ def mock_llm(monkeypatch, result=None, error=None):
 
 
 def test_llm_request(monkeypatch):
+    monkeypatch.setattr(settings, "llm_model", "")
+    monkeypatch.setattr(settings, "llm_base_url", "https://api.deepseek.com")
     monkeypatch.setattr(settings, "deepseek_model", "configured-test-model")
     result = SimpleNamespace(
         choices=[SimpleNamespace(message=SimpleNamespace(content="Ответ"))],
@@ -58,6 +61,34 @@ def test_llm_request(monkeypatch):
     assert create.call_args.kwargs["model"] == "configured-test-model"
     assert create.call_args.kwargs["max_tokens"] == settings.llm_max_tokens
     assert create.call_args.kwargs["extra_body"]["thinking"]["type"] == "disabled"
+
+
+def test_llm_custom_provider(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", SecretStr("new-provider-key"))
+    monkeypatch.setattr(settings, "deepseek_api_key", SecretStr("legacy-key"))
+    monkeypatch.setattr(settings, "llm_base_url", "https://provider.example/v1")
+    monkeypatch.setattr(settings, "llm_model", "custom-model")
+    factory = MagicMock()
+    monkeypatch.setattr(llm, "AsyncOpenAI", factory)
+    llm.client()
+    assert factory.call_args.kwargs["api_key"] == "new-provider-key"
+    assert factory.call_args.kwargs["base_url"] == "https://provider.example/v1"
+    result = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="Ответ"))], usage=None
+    )
+    create = mock_llm(monkeypatch, result)
+    assert asyncio.run(llm.complete([])) == llm.LLMResult("Ответ")
+    assert create.call_args.kwargs["model"] == "custom-model"
+    assert create.call_args.kwargs["extra_body"] is None
+
+
+def test_llm_legacy_key(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", SecretStr(""))
+    monkeypatch.setattr(settings, "deepseek_api_key", SecretStr("legacy-key"))
+    factory = MagicMock()
+    monkeypatch.setattr(llm, "AsyncOpenAI", factory)
+    llm.client()
+    assert factory.call_args.kwargs["api_key"] == "legacy-key"
 
 
 @pytest.mark.parametrize(

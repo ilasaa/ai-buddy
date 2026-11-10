@@ -7,6 +7,9 @@ BASE_DIR = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
+    llm_api_key: SecretStr = SecretStr("")
+    llm_base_url: str = "https://api.deepseek.com"
+    llm_model: str = ""
     deepseek_api_key: SecretStr = SecretStr("")
     deepseek_model: str = "deepseek-flash"
     llm_max_tokens: int = Field(default=1000, ge=64, le=1200)

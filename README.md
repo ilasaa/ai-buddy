@@ -43,6 +43,66 @@ compose.yaml
 .env.example
 ```
 
+## Запуск всего приложения в Docker
+
+При первом запуске скопируйте `.env.example` в `.env` (существующий файл не заменяйте),
+задайте пароль PostgreSQL и `JWT_SECRET` длиной от 32 символов. Секрет можно получить командой
+`python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`.
+Ключ LLM нужен для чата. Затем из корня проекта:
+
+```bash
+docker compose up --build -d
+```
+
+Если Docker требует root, используйте `sudo docker compose up --build -d`.
+Откройте **http://localhost:5173**. Compose собирает frontend и backend, ждёт готовности PostgreSQL,
+применяет миграции, создаёт demo-пользователей, скачивает локальную E5-модель и индексирует базу знаний.
+Первый запуск требует интернета и может занять несколько минут: скачиваются Python-зависимости,
+CPU PyTorch и embedding-модель. Приложение станет доступно после завершения `init`.
+Повторный запуск использует кеш; неизменившиеся документы пропускаются.
+
+Вход: `intern@ai-buddy.example`, `mentor@ai-buddy.example` или `manager@ai-buddy.example`.
+Начальный пароль задаётся через `DEMO_PASSWORD` в `.env`; по умолчанию `Buddy-demo-2026!`.
+Существующие аккаунты, пароли и прогресс сохраняются. Используйте этот запуск для локального демо.
+Данные PostgreSQL и кеш модели хранятся в отдельных Docker volumes.
+
+```bash
+docker compose logs -f init backend  # подготовка и ошибки API
+docker compose down                 # остановить, сохранив данные
+```
+
+В Docker не нужно вручную выполнять разделы 2–5 ниже или устанавливать Python/Node на хосте.
+Backend доступен frontend через `/api`; PostgreSQL также доступен локально на порту 5432
+для прежнего способа разработки. Не запускайте локальный frontend одновременно на порту 5173.
+
+### Переключение LLM через .env
+
+Можно менять провайдера без правок кода, если он поддерживает **OpenAI-совместимый Chat Completions API**.
+Меняйте все три параметра, а не только ключ:
+
+```dotenv
+LLM_API_KEY=ключ-нового-провайдера
+LLM_BASE_URL=https://адрес-провайдера/v1
+LLM_MODEL=имя-модели-у-провайдера
+```
+
+Для DeepSeek используйте `LLM_BASE_URL=https://api.deepseek.com` и нужную модель DeepSeek.
+Для OpenAI адрес API — `https://api.openai.com/v1`; имя доступной модели уточните в своём аккаунте.
+Провайдер должен поддерживать параметры `max_tokens`, `temperature` и текстовые сообщения
+в Chat Completions. Нативный API Anthropic и модели с другим контрактом потребуют адаптации.
+Параметр отключения thinking отправляется только на `api.deepseek.com`.
+
+После изменения `.env` пересоздайте backend:
+
+```bash
+docker compose up -d --no-deps --force-recreate backend
+```
+
+Пересборка образов не нужна; обычный `docker compose restart` не перечитывает переменные контейнера.
+Старые `DEEPSEEK_API_KEY` / `DEEPSEEK_MODEL` продолжают работать как запасные значения,
+если соответствующие `LLM_API_KEY` / `LLM_MODEL` пусты. Новые параметры имеют приоритет.
+Локальная embedding-модель и индекс RAG не зависят от выбранной LLM и не требуют переиндексации.
+
 ## 1. Настройка
 
 Нужны Python 3.14, Node.js 22.12+ (проверено с Node 26), npm и PostgreSQL 17 / Docker Compose.
