@@ -1,8 +1,8 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 import pytest
-
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
 from app.models import Team, User
 
 
@@ -52,11 +52,7 @@ def test_create_user(db_session: Session):
     db_session.flush()
 
     # Получаем стажёра из базы
-    saved_intern = db_session.scalar(
-        select(User).where(
-            User.email == "intern-test@example.com"
-        )
-    )
+    saved_intern = db_session.scalar(select(User).where(User.email == "intern-test@example.com"))
 
     # Проверяем данные
     assert saved_intern is not None
@@ -68,6 +64,7 @@ def test_create_user(db_session: Session):
     assert saved_intern.mentor_id == mentor.id
 
     assert team.leader_id == manager.id
+
 
 def test_duplicate_email(db_session: Session):
     # Создаём команду
@@ -103,6 +100,7 @@ def test_duplicate_email(db_session: Session):
     with pytest.raises(IntegrityError):
         db_session.flush()
 
+
 def test_user_with_invalid_team(db_session: Session):
     user = User(
         full_name="Алексей Иванов",
@@ -115,6 +113,7 @@ def test_user_with_invalid_team(db_session: Session):
 
     with pytest.raises(IntegrityError):
         db_session.flush()
+
 
 def test_user_without_name(db_session: Session):
     team = Team(
@@ -135,6 +134,7 @@ def test_user_without_name(db_session: Session):
 
     with pytest.raises(IntegrityError):
         db_session.flush()
+
 
 def test_delete_mentor(db_session: Session):
     # 1. Создаём команду

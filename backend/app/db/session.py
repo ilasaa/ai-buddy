@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 
-
 database_url = URL.create(
     drivername="postgresql+psycopg",
     username=settings.postgres_user,
@@ -28,6 +27,6 @@ SessionLocal = sessionmaker(
 )
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     with SessionLocal() as session:
         yield session

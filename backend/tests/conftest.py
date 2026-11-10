@@ -1,9 +1,14 @@
 import pytest
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.db.session import database_url
+
+
+@pytest.fixture(scope="session", autouse=True)
+def guard_primary_database():
+    if database_url.database == "ai_buddy_test":
+        raise RuntimeError("Основная база не должна называться ai_buddy_test")
 
 
 @pytest.fixture

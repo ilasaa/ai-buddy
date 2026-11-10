@@ -1,14 +1,10 @@
-from sqlalchemy import create_engine, select
-from sqlalchemy.orm import Session
 import pytest
-
-from sqlalchemy import delete
+from sqlalchemy import create_engine, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models import Team, User
 from app.db.session import database_url
-from app.models import Team
+from app.models import Team, User
 
 
 def test_create_team():
@@ -32,11 +28,7 @@ def test_create_team():
                     session.flush()
 
                     # Ищем созданную команду
-                    result = session.scalar(
-                        select(Team).where(
-                            Team.name == "Backend Team"
-                        )
-                    )
+                    result = session.scalar(select(Team).where(Team.name == "Backend Team"))
 
                     # Проверяем результат
                     assert result is not None
@@ -49,6 +41,7 @@ def test_create_team():
 
     finally:
         engine.dispose()
+
 
 def test_delete_team_with_users(db_session: Session):
     # 1. Создаём команду
@@ -73,6 +66,4 @@ def test_delete_team_with_users(db_session: Session):
 
     # 3. Пытаемся удалить команду
     with pytest.raises(IntegrityError):
-        db_session.execute(
-            delete(Team).where(Team.id == team.id)
-        )
+        db_session.execute(delete(Team).where(Team.id == team.id))
