@@ -1,0 +1,46 @@
+[33mcommit 8117c71014f7add34f9289af4f128deb1a29ef70[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdevelop[m[33m, [m[1;31morigin/develop[m[33m)[m
+Merge: d0e111b 7951a06
+Author: Ilia Safiullin <ilasafi.void@yandex.com>
+Date:   Mon Nov 9 23:12:37 2026 +0300
+
+    Merge pull request #2 from ilasaa/feature/model-tests
+    
+    test: Добавлены тесты моделей User и Team
+
+[33mcommit 7951a0603b2def05c2838428161741387911b395[m[33m ([m[1;31morigin/feature/model-tests[m[33m, [m[1;32mfeature/model-tests[m[33m)[m
+Author: Ilia <ilasafi.void@ya.ru>
+Date:   Mon Nov 9 22:47:47 2026 +0300
+
+    test: Добавлены тесты моделей User и Team
+    
+    Реализован первый набор автоматизированных тестов backend с использованием Pytest и SQLAlchemy.
+    
+    Изменения:
+    Настроена отдельная тестовая база данных PostgreSQL.
+    Добавлена фикстура db_session для подключения к БД и отката изменений.
+    Реализованы тесты создания команд и пользователей.
+    Проверено назначение наставников и руководителей.
+    Добавлены проверки уникальности email и обязательных полей.
+    Проверена целостность внешних ключей.
+    Добавлены тесты удаления наставника (SET NULL) и защиты команды от удаления (RESTRICT).
+    Настроена изоляция тестов через SAVEPOINT.
+    Всего добавлено 7 тестов моделей.
+
+[33mcommit d0e111bf350efce7f85f2fb483c1bc95c1e29a57[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m
+Author: Ilia <ilasafi.void@ya.ru>
+Date:   Mon Nov 9 22:09:26 2026 +0300
+
+    Добавлен файл requirements.txt и README.md
+
+[33mcommit 1f1fdcf9517312aeb687be5198a0795fe75edd8a[m
+Author: Ilia <ilasafi.void@ya.ru>
+Date:   Mon Nov 9 21:26:24 2026 +0300
+
+    Initial backend infrastructure
+    
+    - Создано FastAPI-приложение
+    - Настроен PostgreSQL через Docker
+    - Подключён SQLAlchemy
+    - Созданы модели пользователей и команд
+    - Настроен Alembic
+    - Добавлена первая миграция
