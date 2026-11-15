@@ -47,7 +47,7 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User:
     user = db.get(User, user_id)
     if not user or not user.is_active:
         raise HTTPException(401, "Сессия недействительна")
-    if user.role not in ("intern", "mentor", "manager"):
+    if user.role not in ("intern", "mentor"):
         raise HTTPException(403, "Недостаточно прав")
     return user
 
@@ -69,7 +69,7 @@ def authenticate(db: Session, email: str, password: str):
         raise HTTPException(401, "Неверный email или пароль") from None
     if not valid or not user or not user.password_hash:
         raise HTTPException(401, "Неверный email или пароль")
-    if not user.is_active or user.role not in ("intern", "mentor", "manager"):
+    if not user.is_active or user.role not in ("intern", "mentor"):
         raise HTTPException(403, "Аккаунт недоступен")
     return user
 

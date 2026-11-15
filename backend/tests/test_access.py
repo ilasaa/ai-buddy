@@ -42,10 +42,10 @@ def people(db_session):
         full_name="Mentor", email="mentor-access@example.test", role="mentor", team_id=team.id
     )
     manager = User(
-        full_name="Manager", email="manager-access@example.test", role="manager", team_id=team.id
+        full_name="Manager", email="manager-access@example.test", role="mentor", team_id=team.id
     )
     outsider = User(
-        full_name="Foreign", email="foreign-access@example.test", role="manager", team_id=foreign.id
+        full_name="Foreign", email="foreign-access@example.test", role="mentor", team_id=foreign.id
     )
     stranger = User(
         full_name="Stranger", email="stranger-access@example.test", role="mentor", team_id=team.id
@@ -133,10 +133,8 @@ def test_real_postgres_lifecycle(client, people, db_session, monkeypatch):
     assert client.post(f"/access-requests/{rid}/reject", json={}).status_code == 409
     assert client.get("/mentor/overview").json()["approved"] == 1
     app.dependency_overrides[current_user] = lambda: manager
-    assert len(client.get("/access-requests").json()) == 1
-    assert {intern.id, other.id}.issubset(
-        {p["id"] for p in client.get("/mentor/overview").json()["interns"]}
-    )
+    assert client.get("/access-requests").json() == []
+    assert client.get("/mentor/overview").json()["interns"] == []
     app.dependency_overrides[current_user] = lambda: intern
     detail = client.get(f"/access-requests/{rid}").json()
     assert [e["event_type"] for e in detail["events"]] == ["created", "approved"]
@@ -208,9 +206,9 @@ def test_routing_reject_and_changed_permissions(client, people, db_session):
     intern, mentor, manager, *_ = people
     pid = draft(client, resource="gitlab")
     rid = client.post(f"/assistant/actions/{pid}/confirm").json()["id"]
-    app.dependency_overrides[current_user] = lambda: mentor
-    assert client.post(f"/access-requests/{rid}/approve", json={}).status_code == 403
     app.dependency_overrides[current_user] = lambda: manager
+    assert client.post(f"/access-requests/{rid}/approve", json={}).status_code == 404
+    app.dependency_overrides[current_user] = lambda: mentor
     assert (
         client.post(f"/access-requests/{rid}/reject", json={"comment": "Уточните права"}).json()[
             "status"

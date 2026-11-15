@@ -8,7 +8,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import AccessRequest, AccessRequestEvent, ActionProposal, Team, User
+from app.models import AccessRequest, AccessRequestEvent, ActionProposal, User
 from app.schemas.access import AccessArguments
 
 DEMO_TEAM = "Backend · Demo"
@@ -38,6 +38,8 @@ def policy(user: User, args: AccessArguments):
         task = object_session(user).get(OnboardingTask, args.task_id)
         if not task or task.user_id != user.id:
             raise HTTPException(404, "Задача недоступна")
+        if task.verification_type == "request" and task.request_resource != args.resource:
+            raise HTTPException(422, "Ресурс заявки не соответствует условию задачи")
     # Explicit synthetic policy; never infer project membership from LLM or RAG.
     if user.team.name != DEMO_TEAM or args.project_key != DEMO_PROJECT:
         raise HTTPException(
@@ -48,17 +50,13 @@ def policy(user: User, args: AccessArguments):
 def approver(db: Session, user: User, resource: str):
     if user.role != "intern" or not user.is_active:
         return None
-    candidate = db.get(User, user.mentor_id) if resource != "gitlab" and user.mentor_id else None
-    if resource == "gitlab":
-        team = db.get(Team, user.team_id)
-        candidate = db.get(User, team.leader_id) if team.leader_id else None
-    role = "manager" if resource == "gitlab" else "mentor"
+    candidate = db.get(User, user.mentor_id) if user.mentor_id else None
     return (
         candidate.id
         if (
             candidate
             and candidate.is_active
-            and candidate.role == role
+            and candidate.role == "mentor"
             and candidate.team_id == user.team_id
             and candidate.id != user.id
         )
@@ -95,8 +93,6 @@ def visible(db: Session, user: User, item: AccessRequest):
         return False
     if user.role == "mentor":
         return owner.role == "intern" and owner.mentor_id == user.id
-    if user.role == "manager":
-        return db.get(Team, user.team_id).leader_id == user.id
     return False
 
 
@@ -200,7 +196,9 @@ def confirm(db: Session, user: User, proposal_id: str):
     if item.team_id != user.team_id:
         raise HTTPException(409, "Команда изменилась. Подготовьте новый черновик")
     if item.state == "confirmed":
-        return db.scalar(select(AccessRequest).where(AccessRequest.proposal_id == item.id))
+        result = db.scalar(select(AccessRequest).where(AccessRequest.proposal_id == item.id))
+        complete_request_task(db, user, result)
+        return result
     if item.state != "prepared" or item.expires_at <= datetime.now(UTC):
         raise HTTPException(409, "Черновик отменён или истёк. Подготовьте новый")
     duplicate = db.scalar(
@@ -217,6 +215,7 @@ def confirm(db: Session, user: User, proposal_id: str):
     if duplicate:
         raise HTTPException(409, f"Такая заявка уже существует: №{duplicate.id}")
     result = adapter.create(db, user, item)
+    complete_request_task(db, user, result)
     item.state = "confirmed"
     db.flush()
     return result
@@ -251,3 +250,33 @@ def decide(db: Session, user: User, request_id: int, status: str, comment: str):
     )
     db.flush()
     return item
+
+
+def complete_request_task(db, user, request):
+    from app.models import OnboardingTask, TaskVerification
+
+    if request.task_id is None:
+        return
+    task = db.scalar(
+        select(OnboardingTask)
+        .where(OnboardingTask.id == request.task_id, OnboardingTask.user_id == user.id)
+        .with_for_update()
+    )
+    if not task or task.verification_type != "request" or task.status == "done":
+        return
+    if task.request_resource != request.resource:
+        raise HTTPException(409, "Условие задачи изменилось. Подготовьте заявку заново")
+    task.status = "done"
+    task.completed_at = task.verified_at = datetime.now(UTC)
+    task.evidence = (
+        f"Заявка №{request.id} отправлена: {request.resource}. Выдача доступа не подтверждена."
+    )
+    db.add(
+        TaskVerification(
+            task_id=task.id,
+            actor_id=user.id,
+            action="request_created",
+            evidence=task.evidence,
+            comment="Условие задачи — отправка заявки — выполнено backend",
+        )
+    )

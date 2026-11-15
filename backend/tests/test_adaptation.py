@@ -32,17 +32,18 @@ def scenario(db_session):
     db.flush()
     people = {}
     for key, role, team_id in [
-        ("manager", "manager", team.id),
+        ("manager", "mentor", team.id),
         ("mentor", "mentor", team.id),
         ("intern", "intern", team.id),
-        ("outsider", "manager", other.id),
+        ("outsider", "mentor", other.id),
         ("stranger", "mentor", team.id),
     ]:
         person = User(full_name=key, email=f"{key}@adaptation.test", role=role, team_id=team_id)
         db.add(person)
         people[key] = person
     db.flush()
-    team.leader_id = people["manager"].id
+    people["manager"] = people["mentor"]
+    team.leader_id = people["mentor"].id
     people["intern"].mentor_id = people["mentor"].id
     db.flush()
     app.dependency_overrides[get_db] = lambda: db
@@ -241,7 +242,7 @@ def test_permissions_tools_and_validation(scenario, db_session):
     assert c.get("/adaptation/interns").json()[0]["id"] == i
     assert (
         c.post(f"/adaptation/{i}/agreement", json={"action": "revise", "version": v}).status_code
-        == 404
+        == 409
     )
     as_role("manager")
     assert c.get("/adaptation/interns").status_code == 200
@@ -274,7 +275,7 @@ def test_permissions_tools_and_validation(scenario, db_session):
     ]:
         result = tools.dispatch(db_session, p["intern"], name, "{}")
         assert "Освоить окружение" in json.dumps(result, ensure_ascii=False)
-        assert "Ожидания руководителя" in tools.render(result)
+        assert "Ожидания наставника" in tools.render(result)
     as_role("intern")
     assert c.get("/adaptation/interns").status_code == 403
     assert tools.dispatch(db_session, p["mentor"], "get_next_steps", "{}").get("error")
@@ -511,3 +512,65 @@ def test_llm_generic_key_and_current_plan_context(scenario, monkeypatch):
     overview = c.get(f"/adaptation/{i}").json()
     assert overview["metrics"]["assistant_answers"] == 1
     assert overview["metrics"]["sources_share"] == 0
+
+
+def test_request_task_completes_only_on_confirmed_submission(scenario, db_session):
+    c, p, as_role = scenario
+    i, v, d = create(c, p)
+    team = db_session.get(Team, p["intern"].team_id)
+    team.name = access.DEMO_TEAM
+    db_session.flush()
+    r = c.post(
+        f"/adaptation/{i}/tasks",
+        json={
+            "title": "Отправить заявку в Jira",
+            "goal_id": d["goals"][0]["id"],
+            "due_date": d["plan"]["target_date"],
+            "verification_type": "request",
+            "request_resource": "jira",
+            "version": v,
+        },
+    )
+    assert r.status_code == 200, r.text
+    task = next(t for t in r.json()["tasks"] if t["verification_type"] == "request")
+    as_role("intern")
+    assert (
+        c.patch(f"/users/me/onboarding/{task['id']}", json={"status": "in_progress"}).status_code
+        == 200
+    )
+    assert c.patch(f"/users/me/onboarding/{task['id']}", json={"status": "done"}).status_code == 409
+    assert (
+        c.post(
+            f"/adaptation/tasks/{task['id']}/verification",
+            json={"action": "submit", "evidence": "Пытаюсь закрыть вручную"},
+        ).status_code
+        == 409
+    )
+    args = {
+        "resource": "jira",
+        "project_key": "BACKEND",
+        "permission": "read",
+        "justification": "Для выполнения задачи",
+        "task_id": task["id"],
+    }
+    assert (
+        c.post("/assistant/actions/prepare", json=args | {"resource": "gitlab"}).status_code == 422
+    )
+    draft = c.post("/assistant/actions/prepare", json=args)
+    assert draft.status_code == 200, draft.text
+    assert db_session.get(OnboardingTask, task["id"]).status == "in_progress"
+    pid = draft.json()["id"]
+    r = c.post(f"/assistant/actions/{pid}/confirm")
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "pending" and r.json()["approver_id"] == p["mentor"].id
+    db_session.expire_all()
+    saved = db_session.get(OnboardingTask, task["id"])
+    assert saved.status == "done" and saved.completed_at and str(r.json()["id"]) in saved.evidence
+    assert "Выдача доступа не подтверждена" in saved.evidence
+    assert c.post(f"/assistant/actions/{pid}/confirm").json()["id"] == r.json()["id"]
+    history = db_session.scalars(
+        select(TaskVerification).where(
+            TaskVerification.task_id == task["id"], TaskVerification.action == "request_created"
+        )
+    ).all()
+    assert len(history) == 1

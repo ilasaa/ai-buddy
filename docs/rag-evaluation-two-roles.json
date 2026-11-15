@@ -1,0 +1,87 @@
+{
+  "model": "intfloat/multilingual-e5-small",
+  "cases": [
+    {
+      "question": "Как получить доступ к GitLab?",
+      "score": 0.89058,
+      "top_document": "gitlab_access.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Где запросить права на репозиторий?",
+      "score": 0.85431,
+      "top_document": "gitlab_access.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Как у нас проводят Code Review?",
+      "score": 0.86311,
+      "top_document": "code_review.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Что нужно сделать в первую неделю?",
+      "score": 0.87005,
+      "top_document": "first_day.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какие правила работы с ветками Git?",
+      "score": 0.88936,
+      "top_document": "git_workflow.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Как подготовиться к встрече с наставником?",
+      "score": 0.8738,
+      "top_document": "mentor_meetings.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какой в нашей компании лимит на оплату парковки?",
+      "score": 0.79394,
+      "top_document": "access_requests.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какая корпоративная политика перевозки домашних животных?",
+      "score": 0.78368,
+      "top_document": "access_requests.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Где внутренний регламент бронирования частного самолёта?",
+      "score": 0.79261,
+      "top_document": "communication.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Какой размер корпоративной компенсации за покупку велосипеда?",
+      "score": 0.78406,
+      "top_document": "access_requests.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Как согласовать ожидания руководителя и план адаптации?",
+      "score": 0.86075,
+      "top_document": "adaptation_plan.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Как отправить результат задачи наставнику на проверку?",
+      "score": 0.88437,
+      "top_document": "adaptation_plan.md",
+      "expected_retrieved": true
+    },
+    {
+      "question": "Чем цель адаптации отличается от OKR команды?",
+      "score": 0.8654,
+      "top_document": "adaptation_plan.md",
+      "expected_retrieved": true
+    }
+  ],
+  "max_negative": 0.7939433969086038,
+  "min_positive": 0.8543128151273729,
+  "recommended_threshold": 0.824128,
+  "note": "Small synthetic calibration set; not a production guarantee."
+}

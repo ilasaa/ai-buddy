@@ -22,7 +22,7 @@ def accounts(db_session):
     db_session.flush()
     users = {}
     hashed = passwords.hash("Synthetic-password-123")
-    for role in ["intern", "mentor", "manager"]:
+    for role in ["intern", "mentor"]:
         user = User(
             full_name=f"Test {role}",
             email=f"{role}@dashboard.example",
@@ -161,7 +161,7 @@ def test_foreign_and_invalid_task(client, accounts):
     )
 
 
-@pytest.mark.parametrize("role", ["mentor", "manager"])
+@pytest.mark.parametrize("role", ["mentor"])
 def test_role_boundaries(client, accounts, role):
     assert login(client, role).json()["role"] == role
     assert client.get("/users/me/onboarding").status_code == 403
@@ -259,6 +259,5 @@ def test_invalid_hash_and_role(client, accounts, db_session):
     db_session.flush()
     assert login(client).status_code == 200
     user.role = "unsupported"
-    db_session.flush()
-    assert client.get("/auth/me").status_code == 403
-    assert login(client).status_code == 403
+    with pytest.raises(IntegrityError):
+        db_session.flush()

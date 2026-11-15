@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-Role = Literal["intern", "mentor", "manager"]
+Role = Literal["intern", "mentor"]
 Status = Literal["todo", "in_progress", "done", "submitted", "changes_requested", "blocked"]
 
 
@@ -39,6 +39,7 @@ class Profile(BaseModel):
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    request_resource: str | None = None
     quiz_id: int | None = None
     goal_id: int | None = None
     verification_type: str = "self"

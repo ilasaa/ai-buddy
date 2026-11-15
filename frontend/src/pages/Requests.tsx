@@ -77,7 +77,10 @@ export function Requests() {
           >
             <label>
               Корпоративный ресурс
-              <select name="resource">
+              <select
+                name="resource"
+                defaultValue={params.get("resource") ?? "jira"}
+              >
                 <option value="jira">Jira</option>
                 <option value="confluence">Confluence</option>
                 <option value="gitlab">GitLab</option>
@@ -150,7 +153,7 @@ export function Requests() {
           <p>{statuses[detail.data.status]}</p>
           {detail.data.routing === "awaiting_routing" && (
             <p>
-              Согласующий не назначен. Обратитесь к руководителю для
+              Согласующий не назначен. Обратитесь к наставнику для
               маршрутизации.
             </p>
           )}

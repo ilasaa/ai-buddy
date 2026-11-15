@@ -112,15 +112,11 @@ def reject(
 def mentor_overview(user: User = Depends(current_user), db: Session = Depends(get_db)):
     from fastapi import HTTPException
 
-    from app.models import Team
-
-    if user.role not in ("mentor", "manager"):
-        raise HTTPException(403, "Раздел доступен наставнику и руководителю")
-    query = select(User).where(User.team_id == user.team_id, User.role == "intern")
-    if user.role == "mentor":
-        query = query.where(User.mentor_id == user.id)
-    elif db.get(Team, user.team_id).leader_id != user.id:
-        raise HTTPException(403, "Вы не руководитель команды")
+    if user.role != "mentor":
+        raise HTTPException(403, "Раздел доступен наставнику")
+    query = select(User).where(
+        User.team_id == user.team_id, User.role == "intern", User.mentor_id == user.id
+    )
     interns = [
         {"id": p.id, "full_name": p.full_name, "onboarding": overview(db, p.id)}
         for p in db.scalars(query).all()

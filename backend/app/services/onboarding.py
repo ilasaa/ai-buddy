@@ -41,14 +41,14 @@ def change_status(db: Session, user_id: int, task_id: int, status: str):
         raise HTTPException(409, "Задача ожидает проверки")
     if task.status == "done" and task.verification_type != "self" and status != "done":
         raise HTTPException(
-            409, "Подтверждённый результат пересматривает руководитель через новую версию"
+            409, "Подтверждённый результат пересматривает наставник через новую версию"
         )
     if task.status != status:
         from app.models import AdaptationGoal, TaskVerification
 
         goal = db.get(AdaptationGoal, task.goal_id) if task.goal_id else None
         if goal and goal.status == "achieved":
-            raise HTTPException(409, "Цель уже подтверждена. Обсудите пересмотр с руководителем")
+            raise HTTPException(409, "Цель уже подтверждена. Обсудите пересмотр с наставником")
         db.add(
             TaskVerification(
                 task_id=task.id,

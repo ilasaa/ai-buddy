@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Check } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { request, type Status, type Task } from "../api";
@@ -5,9 +6,11 @@ import { statuses, date } from "../labels";
 export function TaskRow({
   task,
   editable = false,
+  onComplete,
 }: {
   task: Task;
   editable?: boolean;
+  onComplete?: () => void;
 }) {
   const cache = useQueryClient();
   const mutation = useMutation({
@@ -39,36 +42,43 @@ export function TaskRow({
           </p>
         )}
       </div>
-      {editable ? (
-        <select
-          aria-label={`Статус: ${task.title}`}
-          value={task.status}
-          disabled={mutation.isPending}
-          onChange={(e) => mutation.mutate(e.target.value as Status)}
-        >
-          {Object.entries(statuses)
-            .filter(
-              ([value]) =>
-                (!["submitted", "changes_requested"].includes(value) ||
-                  value === task.status) &&
-                (value !== "done" ||
-                  !["review", "quiz"].includes(
-                    task.verification_type ?? "self",
-                  )),
-            )
-            .map(([value, label]) => (
-              <option
-                key={value}
-                value={value}
-                disabled={["submitted", "changes_requested"].includes(value)}
-              >
-                {label}
-              </option>
-            ))}
-        </select>
-      ) : (
+      <div className="task-actions">
         <span className={`status ${task.status}`}>{statuses[task.status]}</span>
-      )}
+        {editable &&
+          ["todo", "blocked", "changes_requested"].includes(task.status) && (
+            <button
+              disabled={mutation.isPending}
+              aria-label={`Приступить: ${task.title}`}
+              onClick={() => mutation.mutate("in_progress")}
+            >
+              {task.status === "todo" ? "Приступить" : "Продолжить"}
+            </button>
+          )}
+        {editable &&
+          task.status === "in_progress" &&
+          ((task.verification_type ?? "self") === "self" ? (
+            <button
+              disabled={mutation.isPending}
+              aria-label={`Завершить: ${task.title}`}
+              onClick={() => mutation.mutate("done")}
+            >
+              Завершить
+            </button>
+          ) : task.verification_type === "request" ? (
+            <Link
+              className="text-link"
+              to={`/requests?task_id=${task.id}&resource=${task.request_resource ?? "jira"}`}
+            >
+              Отправить заявку
+            </Link>
+          ) : (
+            <button disabled={mutation.isPending} onClick={onComplete}>
+              {task.verification_type === "quiz"
+                ? "Пройти мини-тест"
+                : "Завершить"}
+            </button>
+          ))}
+      </div>
     </div>
   );
 }

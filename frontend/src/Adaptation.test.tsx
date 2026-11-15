@@ -29,7 +29,7 @@ beforeEach(() => {
     plan: {
       id: 1,
       title: "План Backend",
-      expectations: "Ожидания руководителя",
+      expectations: "Ожидания наставника",
       status: "pending_agreement",
       version: 1,
       start_date: "2026-11-01",
@@ -48,7 +48,7 @@ beforeEach(() => {
         id: 1,
         title: "Запустить локально",
         description: "Проверить запуск",
-        status: "todo",
+        status: "in_progress",
         verification_type: "review",
         goal_id: 1,
         due_date: "2026-12-01",
@@ -160,16 +160,17 @@ test("intern reads goals, agrees and submits evidence", async () => {
       screen.queryByRole("button", { name: "Согласовать план" }),
     ).not.toBeInTheDocument(),
   );
+  await userEvent.click(screen.getByRole("button", { name: "Завершить" }));
   await userEvent.type(
     screen.getByLabelText("Результат выполнения / ссылка"),
     "MR с тестами",
   );
   await userEvent.click(
-    screen.getByRole("button", { name: "Отправить результат" }),
+    screen.getByRole("button", { name: "Отправить на проверку" }),
   );
   await waitFor(() =>
     expect(
-      screen.queryByRole("button", { name: "Отправить результат" }),
+      screen.queryByRole("button", { name: "Отправить на проверку" }),
     ).not.toBeInTheDocument(),
   );
   expect(fetch).toHaveBeenCalledWith(
@@ -193,7 +194,7 @@ test("intern proposes changes and sees mutation errors", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("План изменился");
 });
 test("manager creates draft, goal, task, OKR and sends plan", async () => {
-  user.role = "manager";
+  user.role = "mentor";
   data.plan!.status = "draft";
   mount();
   await screen.findByLabelText("Название плана");
@@ -255,12 +256,12 @@ test.each(["Подтвердить выполнение", "Вернуть на �
       expect(screen.queryByRole("button", { name })).not.toBeInTheDocument(),
     );
     expect(
-      screen.queryByRole("button", { name: "Создать новую версию" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Создать новую версию" }),
+    ).toBeInTheDocument();
   },
 );
 test("manager creates first plan for newcomer", async () => {
-  user.role = "manager";
+  user.role = "mentor";
   data.plan = null;
   data.goals = [];
   data.tasks = [];
@@ -269,7 +270,7 @@ test("manager creates first plan for newcomer", async () => {
   await screen.findByLabelText("Название плана");
   await userEvent.type(screen.getByLabelText("Название плана"), "План новичка");
   await userEvent.type(
-    screen.getByLabelText("Ожидания руководителя"),
+    screen.getByLabelText("Ожидания наставника"),
     "Освоить процессы",
   );
   await userEvent.type(screen.getByLabelText("Начало"), "2026-11-01");
@@ -292,7 +293,7 @@ test("empty team and server errors", async () => {
   await screen.findByText("Нет закреплённых стажёров.");
 });
 test("team fetch error", async () => {
-  user.role = "manager";
+  user.role = "mentor";
   peopleError = true;
   mount();
   expect(await screen.findByRole("alert")).toHaveTextContent("Ошибка команды");
@@ -309,7 +310,7 @@ test("plan error and retry", async () => {
 });
 
 test("manager edits draft goal and task and assigns quiz with server ID", async () => {
-  user.role = "manager";
+  user.role = "mentor";
   data.plan!.status = "draft";
   mount();
   await screen.findByLabelText("Название плана");

@@ -35,6 +35,8 @@ export function ActionProposals({
     onSuccess: async () => {
       await cache.invalidateQueries({ queryKey: ["proposals"] });
       await cache.invalidateQueries({ queryKey: ["requests"] });
+      await cache.invalidateQueries({ queryKey: ["adaptation"] });
+      await cache.invalidateQueries({ queryKey: ["onboarding"] });
     },
   });
   return (
@@ -51,7 +53,14 @@ export function ActionProposals({
               {p.parameters.resource.toUpperCase()} · {p.parameters.project_key}{" "}
               · {permission(p.parameters.permission)}
             </p>
-            <p>Причина: {p.parameters.justification}</p>{p.parameters.task_id&&<p>Связанная задача №{p.parameters.task_id}. Создание заявки не завершает задачу.</p>}
+            <p>Причина: {p.parameters.justification}</p>
+            {p.parameters.task_id && (
+              <p>
+                Связанная задача №{p.parameters.task_id}. Задача «Отправить
+                заявку» завершится автоматически. Получение доступа требует
+                отдельного подтверждения.
+              </p>
+            )}
             <p>
               Подтверждение до {new Date(p.expires_at).toLocaleString("ru-RU")}.
               Заявка ещё не создана.

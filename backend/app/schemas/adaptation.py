@@ -35,8 +35,9 @@ class TaskInput(Input):
     description: str = Field(default="", max_length=5000)
     goal_id: int = Field(gt=0)
     due_date: date
+    request_resource: Literal["jira", "confluence", "gitlab"] | None = None
     quiz_id: int | None = Field(default=None, gt=0)
-    verification_type: Literal["self", "review", "quiz"] = "self"
+    verification_type: Literal["self", "review", "quiz", "request"] = "self"
     version: int = Field(gt=0)
 
 

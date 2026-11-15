@@ -28,7 +28,7 @@ def test_create_user(db_session: Session):
     manager = User(
         full_name="Анна Петрова",
         email="manager-test@example.com",
-        role="manager",
+        role="mentor",
         team_id=team.id,
     )
 

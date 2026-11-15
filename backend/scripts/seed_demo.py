@@ -33,7 +33,6 @@ def seed():
             db.flush()
         people = {}
         for role, name in [
-            ("manager", "Анна Петрова"),
             ("mentor", "Дмитрий Смирнов"),
             ("intern", "Алексей Иванов"),
         ]:
@@ -55,7 +54,7 @@ def seed():
                 db.add(user)
                 db.flush()
             people[role] = user
-        team.leader_id = people["manager"].id
+        team.leader_id = people["mentor"].id
         people["intern"].mentor_id = people["mentor"].id
         titles = [
             "Ознакомиться с компанией",
@@ -79,6 +78,8 @@ def seed():
                     user_id=people["intern"].id,
                     title=title,
                     description="Демонстрационная задача адаптации. Результат обсудите с наставником.",
+                    verification_type="request" if i == 7 else "self",
+                    request_resource="jira" if i == 7 else None,
                     status="done" if i < 3 else "in_progress" if i == 3 else "todo",
                     completed_at=datetime.now(UTC) if i < 3 else None,
                     due_date=date.today() + timedelta(days=i - 2),
@@ -123,7 +124,7 @@ def seed_adaptation(db, people, team, password):
     if not db.scalar(select(AdaptationPlan).where(AdaptationPlan.intern_id == ready.id)):
         plan = AdaptationPlan(
             intern_id=ready.id,
-            manager_id=people["manager"].id,
+            mentor_id=people["mentor"].id,
             title="Синтетический Backend-план",
             expectations="Самостоятельно выполнять согласованные инженерные задачи и своевременно сообщать о блокировках.",
             start_date=date.today() - timedelta(days=10),
@@ -161,7 +162,7 @@ def seed_adaptation(db, people, team, password):
             "Познакомиться с командой",
             "Прочитать правила коммуникации",
             "Настроить окружение",
-            "Получить доступ к Jira",
+            "Отправить заявку на доступ к Jira",
             "Получить доступ к GitLab",
             "Запустить сервис локально",
             "Изучить требования первой задачи",
@@ -191,7 +192,14 @@ def seed_adaptation(db, people, team, password):
                 user_id=ready.id,
                 title=title,
                 goal_id=goals[0 if index < 6 else 1 if index < 9 else 2].id,
-                verification_type="quiz" if quiz else "review" if review else "self",
+                verification_type="request"
+                if index == 3
+                else "quiz"
+                if quiz
+                else "review"
+                if review
+                else "self",
+                request_resource="jira" if index == 3 else None,
                 quiz_id=quiz.id if quiz else None,
                 reviewer_id=people["mentor"].id if review else None,
                 status=status,
@@ -221,9 +229,9 @@ def seed_adaptation(db, people, team, password):
         db.add(
             PlanAgreement(
                 plan_id=plan.id,
-                actor_id=people["manager"].id,
+                actor_id=people["mentor"].id,
                 version=1,
-                actor_role="manager",
+                actor_role="mentor",
                 action="synthetic_seed",
                 comment="Заранее подготовленное синтетическое состояние для обзора. Полный сценарий — intern-new.",
                 snapshot=snapshot,
@@ -236,7 +244,8 @@ def seed_adaptation(db, people, team, password):
     if not db.scalar(select(AccessRequest).where(AccessRequest.user_id == ready.id)):
         access_task = db.scalar(
             select(OnboardingTask).where(
-                OnboardingTask.user_id == ready.id, OnboardingTask.title == "Получить доступ к Jira"
+                OnboardingTask.user_id == ready.id,
+                OnboardingTask.title == "Отправить заявку на доступ к Jira",
             )
         )
         proposal = access.prepare(

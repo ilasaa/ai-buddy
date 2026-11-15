@@ -1710,3 +1710,5 @@ select {
 .action-proposals .card { overflow-wrap: anywhere; }
 
 .adaptation-fields {border:0;padding:0;min-width:0;display:grid;gap:20px}.adaptation-fields label {display:grid;gap:6px;margin:12px 0}.adaptation-fields textarea,.adaptation-fields input,.adaptation-fields select {width:100%;max-width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;color:inherit;background:transparent}.adaptation-fields textarea {min-height:80px}.adaptation-fields button {margin:6px;padding:10px 16px;border-radius:8px;cursor:pointer}.adaptation-task {padding:16px 0;border-bottom:1px solid var(--border)}
+
+.task-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.task-actions button{padding:8px 14px;border-radius:8px;cursor:pointer}@media(max-width:600px){.task-actions{width:100%;justify-content:flex-start}}

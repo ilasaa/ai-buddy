@@ -168,9 +168,8 @@ test("task update refreshes progress and supports descriptions", async () => {
   loggedIn = true;
   mount("/onboarding");
   await screen.findByText("Подготовьте инструменты");
-  await userEvent.selectOptions(
-    screen.getByLabelText("Статус: Настроить окружение"),
-    "done",
+  await userEvent.click(
+    screen.getByRole("button", { name: "Завершить: Настроить окружение" }),
   );
   await waitFor(() =>
     expect(screen.getByRole("progressbar")).toHaveAttribute(
@@ -178,16 +177,10 @@ test("task update refreshes progress and supports descriptions", async () => {
       "100",
     ),
   );
-  await userEvent.selectOptions(
-    screen.getByLabelText("Статус: Настроить окружение"),
-    "todo",
-  );
-  await waitFor(() =>
-    expect(screen.getByRole("progressbar")).toHaveAttribute(
-      "aria-valuenow",
-      "0",
-    ),
-  );
+  expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Завершить: Настроить окружение" }),
+  ).not.toBeInTheDocument();
 });
 test("task failure and retry", async () => {
   loggedIn = true;
@@ -209,7 +202,7 @@ test("missing mentor and empty tasks", async () => {
   me.internship_started_at = null;
   mount();
   await screen.findByText(
-    "Наставник ещё не назначен. Обратитесь к руководителю команды.",
+    "Наставник ещё не назначен. Попросите команду назначить наставника.",
   );
   expect(
     screen.getByText("Задач пока нет. Обратитесь к наставнику."),
@@ -229,16 +222,13 @@ test("all done dashboard", async () => {
   await screen.findByText("Все задачи выполнены. Поздравляем!");
   expect(screen.getByText("Все задачи выполнены")).toBeInTheDocument();
 });
-test.each(["mentor", "manager"] as const)(
-  "minimal %s dashboard",
-  async (role) => {
-    loggedIn = true;
-    me.role = role;
-    mount();
-    await screen.findByRole("heading", { name: "Здравствуйте, Алексей!" });
-    expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
-  },
-);
+test.each(["mentor"] as const)("minimal %s dashboard", async (role) => {
+  loggedIn = true;
+  me.role = role;
+  mount();
+  await screen.findByRole("heading", { name: "Здравствуйте, Алексей!" });
+  expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+});
 test.each([
   ["/requests", "Заявки на доступ"],
   ["/missing", "Страница не найдена"],
@@ -268,9 +258,8 @@ test("logout and patch errors", async () => {
   failLogout = true;
   mount("/onboarding");
   await screen.findByText("Подготовьте инструменты");
-  await userEvent.selectOptions(
-    screen.getByLabelText("Статус: Настроить окружение"),
-    "done",
+  await userEvent.click(
+    screen.getByRole("button", { name: "Завершить: Настроить окружение" }),
   );
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "Не удалось обновить",
@@ -323,4 +312,31 @@ test("loading state stays visible while awaiting response", async () => {
   expect(screen.getByRole("status")).toHaveTextContent("Загружаем");
   await act(async () => resolve(response({ detail: "No session" }, 401)));
   await screen.findByLabelText("Рабочий email");
+});
+
+test("intern starts and completes a task with buttons instead of a status menu", async () => {
+  loggedIn = true;
+  currentTask.status = "todo";
+  mount("/onboarding");
+  const start = await screen.findByRole("button", {
+    name: "Приступить: Настроить окружение",
+  });
+  expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+  await userEvent.click(start);
+  const finish = await screen.findByRole("button", {
+    name: "Завершить: Настроить окружение",
+  });
+  await userEvent.click(finish);
+  await waitFor(() =>
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "100",
+    ),
+  );
+  expect(
+    screen.queryByRole("button", { name: "Приступить: Настроить окружение" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Завершить: Настроить окружение" }),
+  ).not.toBeInTheDocument();
 });

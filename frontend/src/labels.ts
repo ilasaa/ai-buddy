@@ -2,7 +2,6 @@ import type { Role, Status } from "./api";
 export const roles: Record<Role, string> = {
   intern: "Стажёр",
   mentor: "Наставник",
-  manager: "Руководитель",
 };
 export const statuses: Record<Status, string> = {
   submitted: "На проверке",

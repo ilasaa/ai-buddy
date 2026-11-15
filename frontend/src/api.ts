@@ -1,4 +1,4 @@
-export type Role = "intern" | "mentor" | "manager";
+export type Role = "intern" | "mentor";
 export type Status =
   | "todo"
   | "in_progress"
@@ -21,6 +21,7 @@ export interface Profile {
   internship_started_at: string | null;
 }
 export interface Task {
+  request_resource?: string | null;
   quiz_id?: number | null;
   goal_id?: number | null;
   verification_type?: string;

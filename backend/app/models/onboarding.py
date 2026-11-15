@@ -11,7 +11,12 @@ class OnboardingTask(Base):
     __tablename__ = "onboarding_tasks"
     __table_args__ = (
         CheckConstraint(
-            "verification_type IN ('self','review','quiz')", name="ck_task_verification_type"
+            "(verification_type='request' AND request_resource IN ('jira','confluence','gitlab') AND request_resource IS NOT NULL) OR (verification_type<>'request' AND request_resource IS NULL)",
+            name="ck_task_request_resource",
+        ),
+        CheckConstraint(
+            "verification_type IN ('self','review','quiz','request')",
+            name="ck_task_verification_type",
         ),
         CheckConstraint(
             "(verification_type = 'quiz' AND quiz_id IS NOT NULL) OR (verification_type <> 'quiz' AND quiz_id IS NULL)",
@@ -34,6 +39,7 @@ class OnboardingTask(Base):
     due_date: Mapped[date | None] = mapped_column(Date)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    request_resource: Mapped[str | None] = mapped_column(String(20))
     quiz_id: Mapped[int | None] = mapped_column(ForeignKey("knowledge_quizzes.id"))
     goal_id: Mapped[int | None] = mapped_column(ForeignKey("adaptation_goals.id"), index=True)
     verification_type: Mapped[str] = mapped_column(

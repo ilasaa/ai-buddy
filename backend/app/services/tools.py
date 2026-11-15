@@ -159,10 +159,10 @@ def render(value):
         lines = (
             [
                 f"План: {plan['title']} · версия {plan['version']} · {plan['status']}",
-                f"Ожидания руководителя: {plan['expectations']}",
+                f"Ожидания наставника: {plan['expectations']}",
             ]
             if plan
-            else ["План пока не создан. Обсудите его с руководителем."]
+            else ["План пока не создан. Обсудите его с наставником."]
         )
         lines += [f"Цель: {g['title']}. Критерии: {g['success_criteria']}" for g in data["goals"]]
         lines += [

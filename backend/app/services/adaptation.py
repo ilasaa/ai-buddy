@@ -4,7 +4,7 @@ from fastapi import HTTPException
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import select
 
-from app.models import OnboardingTask, Team, User
+from app.models import OnboardingTask, User
 from app.models.adaptation import (
     AdaptationGoal,
     AdaptationPlan,
@@ -17,18 +17,9 @@ from app.services.onboarding import overview
 
 def intern(db, actor, intern_id, manage=False):
     target = db.get(User, intern_id)
-    team = db.get(Team, actor.team_id)
-    manager = actor.role == "manager" and team and team.leader_id == actor.id
+    mentor = actor.role == "mentor" and target and target.mentor_id == actor.id
     allowed = target and target.role == "intern" and target.team_id == actor.team_id
-    allowed = allowed and (
-        manager
-        if manage
-        else (
-            manager
-            or actor.id == target.id
-            or (actor.role == "mentor" and target.mentor_id == actor.id)
-        )
-    )
+    allowed = allowed and (mentor if manage else (mentor or actor.id == target.id))
     if not allowed:
         raise HTTPException(404, "Стажёр не найден или недоступен")
     return target
@@ -38,7 +29,7 @@ def plan(db, intern_id, lock=False):
     query = select(AdaptationPlan).where(AdaptationPlan.intern_id == intern_id)
     value = db.scalar(query.with_for_update() if lock else query)
     if not value:
-        raise HTTPException(404, "План ещё не создан. Обсудите его с руководителем")
+        raise HTTPException(404, "План ещё не создан. Обсудите его с наставником")
     return value
 
 
@@ -81,7 +72,7 @@ def detail(db, intern_id):
 
     next_steps = []
     if not value or value.status != "active":
-        next_steps.append("Обсудите и согласуйте актуальную версию плана с руководителем")
+        next_steps.append("Обсудите и согласуйте актуальную версию плана с наставником")
     for task in tasks["tasks"]:
         if task["status"] == "blocked":
             next_steps.append(f"Обсудите блокирующую проблему с наставником: {task['title']}")
@@ -96,7 +87,7 @@ def detail(db, intern_id):
             next_steps.append(prefix + task["title"])
     for goal in goals:
         if not any(t["goal_id"] == goal.id for t in tasks["tasks"]):
-            next_steps.append(f"Обсудите задачи для цели «{goal.title}» с руководителем")
+            next_steps.append(f"Обсудите задачи для цели «{goal.title}» с наставником")
     return dict(
         questions=[
             serialize(q) for q in rows(db, MentorQuestion, MentorQuestion.intern_id == intern_id)
@@ -183,14 +174,14 @@ def save_plan(db, actor, intern_id, body):
             for t in linked_tasks
         ):
             raise HTTPException(422, "Период плана должен включать сроки целей и задач")
-        value.manager_id = actor.id
+        value.mentor_id = actor.id
         value.version += 1
         for key, val in data.items():
             setattr(value, key, val)
     else:
         if body.version != 0:
             raise HTTPException(409, "Обновите страницу")
-        value = AdaptationPlan(intern_id=intern_id, manager_id=actor.id, **data)
+        value = AdaptationPlan(intern_id=intern_id, mentor_id=actor.id, **data)
         db.add(value)
     db.flush()
     event(db, value, actor, "draft_saved")
@@ -275,8 +266,8 @@ def verify(db, actor, task_id, body):
     if not task:
         raise HTTPException(404, "Задача не найдена")
     target = intern(db, actor, task.user_id)
-    if task.verification_type == "quiz":
-        raise HTTPException(409, "Пройдите мини-тест для подтверждения задачи")
+    if task.verification_type in ("quiz", "request"):
+        raise HTTPException(409, "Выполните условие задачи: мини-тест или отправку заявки")
     if body.action == "submit":
         if actor.id != task.user_id:
             raise HTTPException(403, "Результат отправляет стажёр")
@@ -359,7 +350,14 @@ def update_task(db, actor, intern_id, task_id, body):
         raise HTTPException(409, "Сначала рассмотрите отправленный результат")
     if any(
         getattr(task, key) != getattr(body, key)
-        for key in ("title", "description", "goal_id", "verification_type", "quiz_id")
+        for key in (
+            "title",
+            "description",
+            "goal_id",
+            "verification_type",
+            "quiz_id",
+            "request_resource",
+        )
     ):
         task.status, task.completed_at, task.verified_at = "todo", None, None
         task.evidence, task.review_comment, task.submitted_at = None, None, None
@@ -375,9 +373,17 @@ def update_task(db, actor, intern_id, task_id, body):
 
 
 def validate_quiz(db, body):
+    validate_request(body)
     from app.models import KnowledgeQuiz
 
     if (body.verification_type == "quiz") != (body.quiz_id is not None):
         raise HTTPException(422, "Для типа мини-тест укажите тест; для других типов тест не нужен")
     if body.quiz_id and not db.get(KnowledgeQuiz, body.quiz_id):
         raise HTTPException(404, "Мини-тест не найден")
+
+
+def validate_request(body):
+    if (body.verification_type == "request") != (body.request_resource is not None):
+        raise HTTPException(
+            422, "Для задачи отправки заявки укажите ресурс; для остальных типов ресурс не нужен"
+        )

@@ -116,7 +116,7 @@ export function Adaptation() {
   const quizzes = useQuery({
     queryKey: ["quiz-catalog"],
     queryFn: () => request<{ id: number; title: string }[]>("/quizzes"),
-    enabled: user.role === "manager",
+    enabled: user.role === "mentor",
   });
   const data = useQuery({
     queryKey: ["adaptation", id],
@@ -162,8 +162,8 @@ export function Adaptation() {
     return <Feedback error={data.error} retry={() => void data.refetch()} />;
   const d = data.data!;
   const p = d.plan;
-  const manager = user.role === "manager";
-  const draft = manager && p?.status === "draft";
+  const mentor = user.role === "mentor";
+  const draft = mentor && p?.status === "draft";
   return (
     <>
       <h1>{user.role === "intern" ? "Моя адаптация" : "Адаптация команды"}</h1>
@@ -257,9 +257,9 @@ export function Adaptation() {
               </p>
             </>
           ) : (
-            <p>План ещё не создан. Обсудите ожидания с руководителем.</p>
+            <p>План ещё не создан. Обсудите ожидания с наставником.</p>
           )}
-          {manager && (!p || draft) && (
+          {mentor && (!p || draft) && (
             <form
               key={`${id}-${p?.version ?? 0}`}
               onSubmit={(e) => {
@@ -280,7 +280,7 @@ export function Adaptation() {
                 />
               </label>
               <label>
-                Ожидания руководителя
+                Ожидания наставника
                 <textarea
                   name="expectations"
                   defaultValue={p?.expectations}
@@ -338,7 +338,7 @@ export function Adaptation() {
                   Отправить на согласование
                 </button>
               )}
-              {manager && p.status !== "draft" && (
+              {mentor && p.status !== "draft" && (
                 <button
                   onClick={() =>
                     send("agreement", { action: "revise", version: p.version })
@@ -424,7 +424,7 @@ export function Adaptation() {
                   </form>
                 </details>
               )}
-              {manager && p?.status === "active" && g.status !== "achieved" && (
+              {mentor && p?.status === "active" && g.status !== "achieved" && (
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -498,6 +498,10 @@ export function Adaptation() {
                     const v = values(e.currentTarget);
                     patch(`tasks/${t.id}`, {
                       ...v,
+                      request_resource:
+                        v.verification_type === "request"
+                          ? String(v.request_resource)
+                          : null,
                       quiz_id:
                         v.verification_type === "quiz"
                           ? Number(v.quiz_id)
@@ -554,6 +558,7 @@ export function Adaptation() {
                       <option value="self">Самостоятельно</option>
                       <option value="review">Проверка результата</option>
                       <option value="quiz">Мини-тест</option>
+                      <option value="request">Отправка заявки</option>
                     </select>
                   </label>
                   <label>
@@ -569,6 +574,17 @@ export function Adaptation() {
                       ))}
                     </select>
                   </label>
+                  <label>
+                    Ресурс заявки
+                    <select
+                      name="request_resource"
+                      defaultValue={t.request_resource ?? "jira"}
+                    >
+                      <option value="jira">Jira</option>
+                      <option value="confluence">Confluence</option>
+                      <option value="gitlab">GitLab</option>
+                    </select>
+                  </label>
                   <button>Сохранить задачу</button>
                 </form>
               </details>
@@ -580,6 +596,10 @@ export function Adaptation() {
                 const v = values(e.currentTarget);
                 send("tasks", {
                   ...v,
+                  request_resource:
+                    v.verification_type === "request"
+                      ? String(v.request_resource)
+                      : null,
                   quiz_id:
                     v.verification_type === "quiz" ? Number(v.quiz_id) : null,
                   goal_id: Number(v.goal_id),
@@ -609,10 +629,9 @@ export function Adaptation() {
                 Подтверждение
                 <select name="verification_type">
                   <option value="self">Самостоятельно</option>
-                  <option value="review">
-                    Проверка наставником / руководителем
-                  </option>
+                  <option value="review">Проверка наставником</option>
                   <option value="quiz">Мини-тест</option>
+                  <option value="request">Отправка заявки</option>
                 </select>
               </label>
               <label>
@@ -623,6 +642,14 @@ export function Adaptation() {
                       {q.title}
                     </option>
                   ))}
+                </select>
+              </label>
+              <label>
+                Ресурс для задачи отправки заявки
+                <select name="request_resource">
+                  <option value="jira">Jira</option>
+                  <option value="confluence">Confluence</option>
+                  <option value="gitlab">GitLab</option>
                 </select>
               </label>
               <button>Назначить задачу</button>
@@ -643,9 +670,9 @@ export function Adaptation() {
               </article>
             ))
           ) : (
-            <p>OKR пока не указаны руководителем.</p>
+            <p>OKR пока не указаны наставником.</p>
           )}
-          {manager && (
+          {mentor && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -758,10 +785,12 @@ function TaskReview({
   act: (body: unknown) => void;
 }) {
   const [text, setText] = useState("");
+  const [finishing, setFinishing] = useState(false);
   return (
     <article className="adaptation-task">
       <TaskRow
         task={t}
+        onComplete={() => setFinishing(true)}
         editable={
           role === "intern" &&
           t.status !== "submitted" &&
@@ -774,22 +803,30 @@ function TaskReview({
           ? "Проверка результата"
           : t.verification_type === "quiz"
             ? "Мини-тест"
-            : "Самостоятельное подтверждение"}{" "}
+            : t.verification_type === "request"
+              ? "Завершается после отправки заявки"
+              : "Самостоятельное подтверждение"}{" "}
         · Срок: {t.due_date ?? "не указан"}
       </p>
       <p>{t.evidence}</p>
-      {role === "intern" && (
-        <Link className="text-link" to={`/requests?task_id=${t.id}`}>
-          Подготовить заявку на доступ для задачи
-        </Link>
-      )}
+      {role === "intern" &&
+        t.verification_type !== "request" &&
+        /доступ/i.test(t.title) &&
+        t.status === "in_progress" && (
+          <Link className="text-link" to={`/requests?task_id=${t.id}`}>
+            Подготовить заявку на доступ для задачи
+          </Link>
+        )}
       <p>{t.review_comment}</p>
-      {role === "intern" && t.verification_type === "quiz" && (
-        <TaskQuiz taskId={t.id} completed={t.status === "done"} />
-      )}
+      {role === "intern" &&
+        t.verification_type === "quiz" &&
+        (finishing || t.status === "done") && (
+          <TaskQuiz taskId={t.id} completed={t.status === "done"} />
+        )}
       {((role === "intern" &&
-        t.verification_type !== "quiz" &&
-        !["submitted", "done"].includes(t.status)) ||
+        t.verification_type === "review" &&
+        finishing &&
+        t.status === "in_progress") ||
         (role !== "intern" && t.status === "submitted")) && (
         <>
           <label>
@@ -803,7 +840,7 @@ function TaskReview({
               disabled={busy}
               onClick={() => act({ action: "submit", evidence: text })}
             >
-              Отправить результат
+              Отправить на проверку
             </button>
           ) : (
             <>

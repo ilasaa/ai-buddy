@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models import Team, User
+from app.models import User
 from app.models.adaptation import TeamObjective
 from app.schemas.adaptation import (
     AgreementInput,
@@ -22,12 +22,11 @@ router = APIRouter(prefix="/adaptation", tags=["Персональная ада�
 
 @router.get("/interns")
 def interns(actor: User = Depends(current_user), db: Session = Depends(get_db)):
-    team = db.get(Team, actor.team_id)
-    query = select(User).where(User.team_id == actor.team_id, User.role == "intern")
-    if actor.role == "mentor":
-        query = query.where(User.mentor_id == actor.id)
-    elif actor.role != "manager" or team.leader_id != actor.id:
-        raise HTTPException(403, "Раздел доступен руководителю и назначенному наставнику")
+    if actor.role != "mentor":
+        raise HTTPException(403, "Раздел доступен назначенному наставнику")
+    query = select(User).where(
+        User.team_id == actor.team_id, User.role == "intern", User.mentor_id == actor.id
+    )
     return [dict(id=u.id, full_name=u.full_name) for u in db.scalars(query.order_by(User.id)).all()]
 
 
@@ -184,7 +183,7 @@ def question(
         or mentor.team_id != target.team_id
         or not mentor.is_active
     ):
-        raise HTTPException(409, "Наставник не назначен. Обратитесь к руководителю")
+        raise HTTPException(409, "Наставник не назначен. Попросите команду назначить наставника")
     db.scalar(select(User).where(User.id == target.id).with_for_update())
     existing = db.scalar(
         select(MentorQuestion).where(

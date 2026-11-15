@@ -16,7 +16,7 @@ class AdaptationPlan(Base):
     )
     id: Mapped[int] = mapped_column(primary_key=True)
     intern_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
-    manager_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    mentor_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     title: Mapped[str] = mapped_column(String(250))
     expectations: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(30), default="draft")
