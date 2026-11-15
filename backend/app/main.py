@@ -3,10 +3,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.access import router as access_router
+from app.api.adaptation import router as adaptation_router
 from app.api.assistant import router as assistant_router
 from app.api.auth import router as auth_router
 from app.api.knowledge import router as knowledge_router
 from app.api.onboarding import router as onboarding_router
+from app.api.quizzes import router as quizzes_router
 from app.api.teams import router as teams_router
 from app.core.config import settings
 
@@ -41,6 +44,9 @@ async def security_headers(request: Request, call_next):
     return response
 
 
+app.include_router(quizzes_router)
+app.include_router(adaptation_router)
+app.include_router(access_router)
 app.include_router(assistant_router)
 app.include_router(knowledge_router)
 app.include_router(auth_router)

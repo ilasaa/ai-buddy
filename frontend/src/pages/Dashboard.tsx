@@ -1,3 +1,4 @@
+import { MentorOverview } from "../components/MentorOverview";
 import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, ChevronRight, Layers, Sparkles } from "lucide-react";
@@ -23,11 +24,10 @@ export function Dashboard({ all = false }: { all?: boolean }) {
         <section className="card">
           <h2>{roles[user.role]}</h2>
           <p>Ваша команда: {user.team.name}</p>
-          <p>
-            Кабинет {user.role === "mentor" ? "наставника" : "руководителя"}{" "}
-            готовится к запуску. Управление адаптацией сотрудников появится в
-            следующей версии.
-          </p>
+          <Link to="/onboarding" className="text-link">
+            Открыть планы адаптации и задачи на проверку
+          </Link>
+          <MentorOverview />
         </section>
       </>
     );
@@ -179,7 +179,7 @@ export function Dashboard({ all = false }: { all?: boolean }) {
           <small>ТЕКУЩИЙ ЭТАП</small>
           <strong>
             {data.total && data.completed === data.total
-              ? "План выполнен"
+              ? "Все задачи выполнены"
               : day && day > 0
                 ? "Адаптация в команде"
                 : "Подготовка к старту"}

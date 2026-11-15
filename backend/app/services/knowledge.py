@@ -32,6 +32,7 @@ def get_document(db: Session, team_id: int, document_id: int):
         "title": document.title,
         "source": document.source,
         "is_public": document.is_public,
+        "metadata": document.document_metadata,
         "content": "\n\n".join(c.content for c in chunks),
     }
 
@@ -114,6 +115,9 @@ def index_file(db: Session, path: Path, root: Path, encoder=provider):
     if not document:
         document = KnowledgeDocument(source=source)
         db.add(document)
+    document.document_metadata = {
+        key: meta[key] for key in ("reviewed_on", "scope", "conflict_group", "rule") if key in meta
+    }
     document.title = meta["title"]
     document.content_hash = digest
     document.embedding_model = settings.embedding_model

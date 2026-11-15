@@ -1703,3 +1703,10 @@ select {
 [data-theme="dark"] nav a.active {
   color: #9dbbff;
 }
+
+.request-list { display: grid; gap: 12px; margin: 24px 0; }
+.request-row { display: grid; gap: 8px; text-align: left; width: 100%; color: inherit; overflow-wrap: anywhere; }
+.action-proposals { display: grid; gap: 12px; padding: 12px; }
+.action-proposals .card { overflow-wrap: anywhere; }
+
+.adaptation-fields {border:0;padding:0;min-width:0;display:grid;gap:20px}.adaptation-fields label {display:grid;gap:6px;margin:12px 0}.adaptation-fields textarea,.adaptation-fields input,.adaptation-fields select {width:100%;max-width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;color:inherit;background:transparent}.adaptation-fields textarea {min-height:80px}.adaptation-fields button {margin:6px;padding:10px 16px;border-radius:8px;cursor:pointer}.adaptation-task {padding:16px 0;border-bottom:1px solid var(--border)}

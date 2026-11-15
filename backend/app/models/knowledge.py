@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
+    JSON,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -11,6 +12,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -27,6 +29,9 @@ class KnowledgeDocument(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String(250))
     source: Mapped[str] = mapped_column(String(500), unique=True)
+    document_metadata: Mapped[dict] = mapped_column(
+        JSON().with_variant(JSONB(), "postgresql"), default=dict, server_default="{}"
+    )
     content_hash: Mapped[str] = mapped_column(String(64))
     embedding_model: Mapped[str] = mapped_column(String(200))
     team_id: Mapped[int | None] = mapped_column(

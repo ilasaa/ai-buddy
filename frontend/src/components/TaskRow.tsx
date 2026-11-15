@@ -13,7 +13,10 @@ export function TaskRow({
   const mutation = useMutation({
     mutationFn: (status: Status) =>
       request<Task>(`/users/me/onboarding/${task.id}`, "PATCH", { status }),
-    onSuccess: () => cache.invalidateQueries({ queryKey: ["onboarding"] }),
+    onSuccess: async () => {
+      await cache.invalidateQueries({ queryKey: ["onboarding"] });
+      await cache.invalidateQueries({ queryKey: ["adaptation"] });
+    },
   });
   return (
     <div className="task-row">
@@ -43,11 +46,25 @@ export function TaskRow({
           disabled={mutation.isPending}
           onChange={(e) => mutation.mutate(e.target.value as Status)}
         >
-          {Object.entries(statuses).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
+          {Object.entries(statuses)
+            .filter(
+              ([value]) =>
+                (!["submitted", "changes_requested"].includes(value) ||
+                  value === task.status) &&
+                (value !== "done" ||
+                  !["review", "quiz"].includes(
+                    task.verification_type ?? "self",
+                  )),
+            )
+            .map(([value, label]) => (
+              <option
+                key={value}
+                value={value}
+                disabled={["submitted", "changes_requested"].includes(value)}
+              >
+                {label}
+              </option>
+            ))}
         </select>
       ) : (
         <span className={`status ${task.status}`}>{statuses[task.status]}</span>

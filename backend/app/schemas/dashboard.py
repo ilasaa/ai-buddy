@@ -4,7 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Role = Literal["intern", "mentor", "manager"]
-Status = Literal["todo", "in_progress", "done"]
+Status = Literal["todo", "in_progress", "done", "submitted", "changes_requested", "blocked"]
 
 
 class LoginRequest(BaseModel):
@@ -39,6 +39,11 @@ class Profile(BaseModel):
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: int
+    quiz_id: int | None = None
+    goal_id: int | None = None
+    verification_type: str = "self"
+    evidence: str | None = None
+    review_comment: str | None = None
     title: str
     description: str | None
     status: Status

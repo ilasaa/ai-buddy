@@ -4,6 +4,7 @@ export interface Source {
   title: string;
   source: string;
   score: number;
+  metadata?: { reviewed_on?: string; scope?: string };
 }
 export interface ChatMessage {
   id: number;

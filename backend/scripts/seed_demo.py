@@ -65,6 +65,7 @@ def seed():
             "Настроить рабочее окружение",
             "Ознакомиться с архитектурой проекта",
             "Выполнить первую задачу",
+            "Оформить доступ к Jira через AI-buddy",
         ]
         for i, title in enumerate(titles):
             if db.scalar(
@@ -83,7 +84,187 @@ def seed():
                     due_date=date.today() + timedelta(days=i - 2),
                 )
             )
+        from scripts.quiz_data import seed_quizzes
+
+        seed_quizzes(db)
+        seed_adaptation(db, people, team, password)
     print("Демонстрационные записи готовы. Пароли существующих аккаунтов не изменены.")
+
+
+def seed_adaptation(db, people, team, password):
+    from app.models import (
+        AdaptationGoal,
+        AdaptationPlan,
+        PlanAgreement,
+        TaskVerification,
+        TeamObjective,
+    )
+    from app.services.adaptation import detail
+
+    # Separate ready profile: never pre-complete the newcomer used for the full demo.
+    for email, name in [
+        ("intern-new@ai-buddy.example", "Новый стажёр"),
+        ("intern-ready@ai-buddy.example", "Стажёр — обзор прогресса"),
+    ]:
+        if not db.scalar(select(User).where(User.email == email)):
+            db.add(
+                User(
+                    full_name=name,
+                    email=email,
+                    role="intern",
+                    team_id=team.id,
+                    mentor_id=people["mentor"].id,
+                    internship_started_at=date.today(),
+                    password_hash=passwords.hash(password),
+                )
+            )
+    db.flush()
+    ready = db.scalar(select(User).where(User.email == "intern-ready@ai-buddy.example"))
+    if not db.scalar(select(AdaptationPlan).where(AdaptationPlan.intern_id == ready.id)):
+        plan = AdaptationPlan(
+            intern_id=ready.id,
+            manager_id=people["manager"].id,
+            title="Синтетический Backend-план",
+            expectations="Самостоятельно выполнять согласованные инженерные задачи и своевременно сообщать о блокировках.",
+            start_date=date.today() - timedelta(days=10),
+            target_date=date.today() + timedelta(days=90),
+            status="active",
+            agreed_at=datetime.now(UTC),
+        )
+        db.add(plan)
+        db.flush()
+        goals = []
+        for title, criteria in [
+            (
+                "Освоить рабочее окружение",
+                "Получены доступы, настроено окружение, локально запущен сервис",
+            ),
+            (
+                "Выполнить первую самостоятельную инженерную задачу",
+                "Требования изучены, решение и тесты прошли Code Review",
+            ),
+            (
+                "Освоить процессы командной разработки",
+                "Понимает Git workflow, трекер задач и отправку изменений на ревью",
+            ),
+        ]:
+            goal = AdaptationGoal(
+                plan_id=plan.id,
+                title=title,
+                success_criteria=criteria,
+                target_date=plan.target_date,
+            )
+            db.add(goal)
+            goals.append(goal)
+        db.flush()
+        titles = [
+            "Познакомиться с командой",
+            "Прочитать правила коммуникации",
+            "Настроить окружение",
+            "Получить доступ к Jira",
+            "Получить доступ к GitLab",
+            "Запустить сервис локально",
+            "Изучить требования первой задачи",
+            "Написать тесты первой задачи",
+            "Пройти Code Review",
+            "Изучить Git workflow",
+        ]
+        for index, title in enumerate(titles):
+            status = (
+                "done"
+                if index < 2
+                else "submitted"
+                if index == 2
+                else "blocked"
+                if index == 3
+                else "todo"
+            )
+            review = index in (2, 5, 7, 8)
+            from app.models import KnowledgeQuiz
+
+            quiz = (
+                db.scalar(select(KnowledgeQuiz).where(KnowledgeQuiz.slug == "git-workflow"))
+                if index == 9
+                else None
+            )
+            task = OnboardingTask(
+                user_id=ready.id,
+                title=title,
+                goal_id=goals[0 if index < 6 else 1 if index < 9 else 2].id,
+                verification_type="quiz" if quiz else "review" if review else "self",
+                quiz_id=quiz.id if quiz else None,
+                reviewer_id=people["mentor"].id if review else None,
+                status=status,
+                due_date=date.today() + timedelta(days=index - 4),
+                completed_at=datetime.now(UTC) if status == "done" else None,
+                submitted_at=datetime.now(UTC) if status == "submitted" else None,
+                evidence="Синтетический результат: сервис запускается, приложен учебный MR"
+                if status == "submitted"
+                else None,
+                description="Синтетическая задача прототипа, не официальный чек-лист Авито",
+            )
+            db.add(task)
+            db.flush()
+            if status == "submitted":
+                db.add(
+                    TaskVerification(
+                        task_id=task.id,
+                        actor_id=ready.id,
+                        action="submit",
+                        evidence=task.evidence,
+                        comment="Демонстрационные данные",
+                    )
+                )
+        db.flush()
+        snapshot = detail(db, ready.id)
+        snapshot.pop("history", None)
+        db.add(
+            PlanAgreement(
+                plan_id=plan.id,
+                actor_id=people["manager"].id,
+                version=1,
+                actor_role="manager",
+                action="synthetic_seed",
+                comment="Заранее подготовленное синтетическое состояние для обзора. Полный сценарий — intern-new.",
+                snapshot=snapshot,
+            )
+        )
+    from app.models import AccessRequest
+    from app.schemas.access import AccessArguments
+    from app.services import access
+
+    if not db.scalar(select(AccessRequest).where(AccessRequest.user_id == ready.id)):
+        access_task = db.scalar(
+            select(OnboardingTask).where(
+                OnboardingTask.user_id == ready.id, OnboardingTask.title == "Получить доступ к Jira"
+            )
+        )
+        proposal = access.prepare(
+            db,
+            ready,
+            AccessArguments(
+                resource="jira",
+                project_key="BACKEND",
+                permission="read",
+                justification="Синтетическая заявка профиля обзора прогресса",
+                task_id=access_task.id if access_task else None,
+            ),
+        )
+        access.confirm(db, ready, proposal.id)
+    if not db.scalar(select(TeamObjective).where(TeamObjective.team_id == team.id)):
+        db.add(
+            TeamObjective(
+                team_id=team.id,
+                title="Улучшить качество и надёжность демонстрационного backend-сервиса",
+                key_results=[
+                    "Проверки критических сценариев",
+                    "Успешный CI",
+                    "Устранены согласованные дефекты",
+                ],
+                period_start=date.today(),
+                period_end=date.today() + timedelta(days=90),
+            )
+        )
 
 
 if __name__ == "__main__":

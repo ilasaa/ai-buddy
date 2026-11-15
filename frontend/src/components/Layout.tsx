@@ -66,7 +66,9 @@ export function Layout({ user }: { user: Profile }) {
               onClick={() => setOpen(false)}
             >
               <item.icon size={20} />
-              {item.label}
+              {item.to === "/onboarding" && user.role !== "intern"
+                ? "Адаптация команды"
+                : item.label}
             </NavLink>
           ))}
         </nav>

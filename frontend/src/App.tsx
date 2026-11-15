@@ -1,4 +1,6 @@
+import { Adaptation } from "./pages/Adaptation";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { Requests } from "./pages/Requests";
 import { Assistant } from "./pages/Assistant";
 import { Knowledge } from "./pages/Knowledge";
 import { ApiError } from "./api";
@@ -24,17 +26,9 @@ export function App() {
       <Route path="/login" element={<Login />} />
       <Route element={<Protected />}>
         <Route index element={<Dashboard />} />
-        <Route path="onboarding" element={<Dashboard all />} />
+        <Route path="onboarding" element={<Adaptation />} />
         <Route path="assistant" element={<Assistant />} />
-        <Route
-          path="requests"
-          element={
-            <Placeholder
-              title="Мои заявки"
-              description="Создание и отслеживание заявок появится после подключения корпоративных сервисов."
-            />
-          }
-        />
+        <Route path="requests" element={<Requests />} />
         <Route path="knowledge" element={<Knowledge />} />
         <Route path="knowledge/:documentId" element={<Knowledge />} />
         <Route

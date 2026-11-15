@@ -26,6 +26,7 @@ class Source(BaseModel):
     title: str
     source: str
     score: float
+    metadata: dict = {}
 
 
 class MessageResponse(BaseModel):
@@ -54,6 +55,7 @@ class ChatResponse(BaseModel):
 
 
 class DocumentResponse(BaseModel):
+    metadata: dict = {}
     id: int
     title: str
     source: str

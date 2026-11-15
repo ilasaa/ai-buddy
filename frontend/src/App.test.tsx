@@ -54,6 +54,15 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/access-requests")) return response([]);
+      if (url.endsWith("/mentor/overview"))
+        return response({
+          interns: [],
+          requests: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0,
+        });
       if (url.endsWith("/auth/me"))
         return loggedIn
           ? response(me)
@@ -77,6 +86,19 @@ beforeEach(() => {
         };
         return response(currentTask);
       }
+      if (url.endsWith("/adaptation/1"))
+        return response({
+          plan: null,
+          goals: [],
+          history: [],
+          objectives: [],
+          verifications: [],
+          next_steps: [],
+          tasks: empty ? [] : [currentTask],
+          completed: currentTask.status === "done" ? 1 : 0,
+          total: empty ? 0 : 1,
+          percent: currentTask.status === "done" ? 100 : 0,
+        });
       if (url.endsWith("/onboarding")) {
         if (failTasks)
           return response({ detail: "Ошибка загрузки задач" }, 500);
@@ -205,7 +227,7 @@ test("all done dashboard", async () => {
   currentTask.status = "done";
   mount();
   await screen.findByText("Все задачи выполнены. Поздравляем!");
-  expect(screen.getByText("План выполнен")).toBeInTheDocument();
+  expect(screen.getByText("Все задачи выполнены")).toBeInTheDocument();
 });
 test.each(["mentor", "manager"] as const)(
   "minimal %s dashboard",
@@ -218,14 +240,16 @@ test.each(["mentor", "manager"] as const)(
   },
 );
 test.each([
-  ["/requests", "Мои заявки"],
+  ["/requests", "Заявки на доступ"],
   ["/missing", "Страница не найдена"],
 ])("placeholder %s", async (path, title) => {
   loggedIn = true;
   mount(path);
   await screen.findByRole("heading", { name: title });
   await userEvent.click(
-    screen.getByRole("link", { name: /Вернуться на главную/ }),
+    screen.getByRole("link", {
+      name: path === "/requests" ? "Главная" : /Вернуться на главную/,
+    }),
   );
   await screen.findByRole("heading", { name: "Привет, Алексей!" });
 });

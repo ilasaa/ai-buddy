@@ -19,7 +19,14 @@ def list_documents(user: User = Depends(current_user), db: Session = Depends(get
         .order_by(KnowledgeDocument.title)
     ).all()
     return [
-        DocumentResponse(id=d.id, title=d.title, source=d.source, is_public=d.is_public, content="")
+        DocumentResponse(
+            id=d.id,
+            title=d.title,
+            source=d.source,
+            is_public=d.is_public,
+            content="",
+            metadata=d.document_metadata,
+        )
         for d in documents
     ]
 

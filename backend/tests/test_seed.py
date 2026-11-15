@@ -22,7 +22,7 @@ def test_seed_idempotent_preserves_progress(db_session, monkeypatch):
     tasks = db_session.scalars(
         select(OnboardingTask).where(OnboardingTask.user_id == intern.id)
     ).all()
-    assert len(tasks) == 7
+    assert len(tasks) == 8
     assert sum(t.status == "done" for t in tasks) == 3
     tasks[0].status = "in_progress"
     tasks[0].completed_at = None
@@ -34,7 +34,7 @@ def test_seed_idempotent_preserves_progress(db_session, monkeypatch):
             .select_from(OnboardingTask)
             .where(OnboardingTask.user_id == intern.id)
         )
-        == 7
+        == 8
     )
     assert tasks[0].status == "in_progress"
     assert intern.password_hash == original_hash

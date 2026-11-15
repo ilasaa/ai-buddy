@@ -1,12 +1,74 @@
 [
- {"question":"Как получить доступ к GitLab?","documents":["gitlab_access.md","access_requests.md"]},
- {"question":"Где запросить права на репозиторий?","documents":["gitlab_access.md"]},
- {"question":"Как у нас проводят Code Review?","documents":["code_review.md"]},
- {"question":"Что нужно сделать в первую неделю?","documents":["first_day.md","onboarding.md"]},
- {"question":"Какие правила работы с ветками Git?","documents":["git_workflow.md"]},
- {"question":"Как подготовиться к встрече с наставником?","documents":["mentor_meetings.md"]},
- {"question":"Какой в нашей компании лимит на оплату парковки?","documents":[]},
- {"question":"Какая корпоративная политика перевозки домашних животных?","documents":[]},
- {"question":"Где внутренний регламент бронирования частного самолёта?","documents":[]},
- {"question":"Какой размер корпоративной компенсации за покупку велосипеда?","documents":[]}
+  {
+    "question": "Как получить доступ к GitLab?",
+    "documents": [
+      "gitlab_access.md",
+      "access_requests.md"
+    ]
+  },
+  {
+    "question": "Где запросить права на репозиторий?",
+    "documents": [
+      "gitlab_access.md"
+    ]
+  },
+  {
+    "question": "Как у нас проводят Code Review?",
+    "documents": [
+      "code_review.md"
+    ]
+  },
+  {
+    "question": "Что нужно сделать в первую неделю?",
+    "documents": [
+      "first_day.md",
+      "onboarding.md"
+    ]
+  },
+  {
+    "question": "Какие правила работы с ветками Git?",
+    "documents": [
+      "git_workflow.md"
+    ]
+  },
+  {
+    "question": "Как подготовиться к встрече с наставником?",
+    "documents": [
+      "mentor_meetings.md"
+    ]
+  },
+  {
+    "question": "Какой в нашей компании лимит на оплату парковки?",
+    "documents": []
+  },
+  {
+    "question": "Какая корпоративная политика перевозки домашних животных?",
+    "documents": []
+  },
+  {
+    "question": "Где внутренний регламент бронирования частного самолёта?",
+    "documents": []
+  },
+  {
+    "question": "Какой размер корпоративной компенсации за покупку велосипеда?",
+    "documents": []
+  },
+  {
+    "question": "Как согласовать ожидания руководителя и план адаптации?",
+    "documents": [
+      "adaptation_plan.md"
+    ]
+  },
+  {
+    "question": "Как отправить результат задачи наставнику на проверку?",
+    "documents": [
+      "adaptation_plan.md"
+    ]
+  },
+  {
+    "question": "Чем цель адаптации отличается от OKR команды?",
+    "documents": [
+      "adaptation_plan.md"
+    ]
+  }
 ]

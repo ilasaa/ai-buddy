@@ -5,6 +5,9 @@ export const roles: Record<Role, string> = {
   manager: "Руководитель",
 };
 export const statuses: Record<Status, string> = {
+  submitted: "На проверке",
+  changes_requested: "На доработке",
+  blocked: "Заблокировано",
   todo: "Не начато",
   in_progress: "В процессе",
   done: "Выполнено",

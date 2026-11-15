@@ -1,5 +1,11 @@
 export type Role = "intern" | "mentor" | "manager";
-export type Status = "todo" | "in_progress" | "done";
+export type Status =
+  | "todo"
+  | "in_progress"
+  | "done"
+  | "submitted"
+  | "changes_requested"
+  | "blocked";
 export interface Team {
   id: number;
   name: string;
@@ -15,6 +21,11 @@ export interface Profile {
   internship_started_at: string | null;
 }
 export interface Task {
+  quiz_id?: number | null;
+  goal_id?: number | null;
+  verification_type?: string;
+  evidence?: string | null;
+  review_comment?: string | null;
   id: number;
   title: string;
   description: string | null;

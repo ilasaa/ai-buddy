@@ -24,5 +24,35 @@ services:
       timeout: 5s
       retries: 5
 
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      EMBEDDING_CACHE_DIR: /cache/huggingface
+      DEMO_PASSWORD: ${DEMO_PASSWORD:?Set DEMO_PASSWORD (at least 12 characters)}
+    volumes:
+      - embedding_cache:/cache/huggingface
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 300s
+      retries: 10
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
+  embedding_cache:
   postgres_data:

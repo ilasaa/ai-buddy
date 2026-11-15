@@ -32,3 +32,10 @@ def db_session():
 
     finally:
         engine.dispose()
+
+
+@pytest.fixture(autouse=True)
+def local_test_cookies(monkeypatch):
+    # Tests use HTTP TestClient regardless of deployment .env (which may use HTTPS).
+    from app.core.config import settings
+    monkeypatch.setattr(settings, "cookie_secure", False)

@@ -39,6 +39,7 @@ beforeEach(() => {
     vi.fn(async (url: string, init?: RequestInit) => {
       if (errorPath && url.includes(errorPath))
         return response({ detail: "Лимит или сервис недоступен" }, 503);
+      if (url === "/api/assistant/actions") return response([]);
       if (url === "/api/assistant/conversations" && init?.method === "POST")
         return response({ id: 1, title: "Новый диалог" });
       if (url === "/api/assistant/conversations")
@@ -251,4 +252,21 @@ test("theme persists and toggles without storing tokens", async () => {
     screen.getByRole("button", { name: "Включить светлую тему" }),
   );
   expect(document.documentElement.dataset.theme).toBe("light");
+});
+
+test("Jira starter explains explicit confirmation and accepts natural language", async () => {
+  mount();
+  await screen.findByText("История про GitLab");
+  expect(screen.getByText(/Перед отправкой/)).toHaveTextContent(
+    "кнопку подтверждения",
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Мне нужен доступ к Jira" }),
+  );
+  await screen.findByText("Мне нужен доступ к Jira");
+  const calls = vi.mocked(fetch).mock.calls;
+  const chat = calls.find(([url]) => url === "/api/assistant/chat");
+  expect(JSON.parse(String(chat?.[1]?.body)).message).toBe(
+    "Мне нужен доступ к Jira",
+  );
 });

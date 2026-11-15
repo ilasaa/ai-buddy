@@ -4,8 +4,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, BookOpen, MessageSquare, Plus, Sparkles } from "lucide-react";
 import { request } from "../api";
 import type { ChatMessage, ChatResponse, Conversation } from "../assistant-api";
+import { ActionProposals } from "../components/ActionProposals";
 import { Feedback } from "../components/Feedback";
 const questions = [
+  "Мне нужен доступ к Jira",
   "Какие задачи у меня остались?",
   "Как получить доступ к GitLab?",
   "Как у нас проводят Code Review?",
@@ -34,6 +36,7 @@ export function Assistant() {
     onSuccess: async (data) => {
       setActive(data.conversation_id);
       setText("");
+      await cache.invalidateQueries({ queryKey: ["proposals"] });
       await cache.invalidateQueries({ queryKey: ["conversations"] });
       await cache.invalidateQueries({
         queryKey: ["messages", data.conversation_id],
@@ -46,6 +49,7 @@ export function Assistant() {
       setActive(item.id);
       setText("");
       send.reset();
+      await cache.invalidateQueries({ queryKey: ["proposals"] });
       await cache.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
@@ -72,7 +76,7 @@ export function Assistant() {
             источники.
           </p>
         </div>
-        <span className="pill">DeepSeek + локальный RAG</span>
+        <span className="pill">Инструкции и помощь с доступами</span>
       </div>
       <div className="chat-layout">
         <aside className="card conversations">
@@ -118,8 +122,8 @@ export function Assistant() {
           <div className="chat-disclaimer">
             <BookOpen size={18} />
             <p>
-              Инструкции базы знаний синтетические. Помощник объясняет действия,
-              но не выполняет их.
+              Инструкции базы знаний синтетические. Создание заявки требует
+              подтверждения кнопкой.
             </p>
             <Link className="text-link" to="/knowledge">
               Открыть базу знаний
@@ -152,7 +156,9 @@ export function Assistant() {
                 <h2>С чего начнём?</h2>
                 <p>
                   Привет! Я AI-buddy. Помогу разобраться в задачах адаптации,
-                  инструментах и процессах команды. О чём хочешь спросить?
+                  инструментах и процессах команды. Нужен доступ к Jira?
+                  Напишите об этом — я уточню детали и подготовлю заявку. Перед
+                  отправкой вы проверите её и нажмёте кнопку подтверждения.
                 </p>
                 <div className="quick-questions">
                   {questions.map((question) => (
@@ -193,6 +199,9 @@ export function Assistant() {
                           to={`/knowledge/${source.document_id}`}
                         >
                           <BookOpen size={14} />[{index + 1}] {source.title}
+                          {source.metadata?.reviewed_on
+                            ? ` · Актуализация: ${source.metadata.reviewed_on}`
+                            : " · Дата актуализации неизвестна"}
                         </Link>
                       ))}
                     </div>
@@ -206,6 +215,7 @@ export function Assistant() {
                 Запрос отправлен. AI-buddy готовит ответ…
               </div>
             )}
+            <ActionProposals key={active ?? "new"} conversationId={active} />
             <div ref={bottom} />
           </div>
           {send.error && (

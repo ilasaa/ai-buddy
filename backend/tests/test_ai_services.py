@@ -49,7 +49,7 @@ def mock_llm(monkeypatch, result=None, error=None):
 def test_llm_request(monkeypatch):
     monkeypatch.setattr(settings, "deepseek_model", "configured-test-model")
     result = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content="Ответ"))],
+        choices=[SimpleNamespace(message=SimpleNamespace(content="Ответ", tool_calls=[]))],
         usage=SimpleNamespace(prompt_tokens=20, completion_tokens=10),
     )
     create = mock_llm(monkeypatch, result)
@@ -60,9 +60,38 @@ def test_llm_request(monkeypatch):
     assert create.call_args.kwargs["extra_body"]["thinking"]["type"] == "disabled"
 
 
+def test_llm_custom_provider(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", SecretStr("new-provider-key"))
+    monkeypatch.setattr(settings, "deepseek_api_key", SecretStr("legacy-key"))
+    monkeypatch.setattr(settings, "llm_base_url", "https://provider.example/v1")
+    monkeypatch.setattr(settings, "llm_model", "custom-model")
+    factory = MagicMock()
+    monkeypatch.setattr(llm, "AsyncOpenAI", factory)
+    llm.client()
+    assert factory.call_args.kwargs["api_key"] == "new-provider-key"
+    assert factory.call_args.kwargs["base_url"] == "https://provider.example/v1"
+    result = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="Ответ", tool_calls=[]))],
+        usage=None,
+    )
+    create = mock_llm(monkeypatch, result)
+    assert asyncio.run(llm.complete([])) == llm.LLMResult("Ответ")
+    assert create.call_args.kwargs["model"] == "custom-model"
+    assert create.call_args.kwargs["extra_body"] is None
+
+
+def test_llm_legacy_key(monkeypatch):
+    monkeypatch.setattr(settings, "llm_api_key", SecretStr(""))
+    monkeypatch.setattr(settings, "deepseek_api_key", SecretStr("legacy-key"))
+    factory = MagicMock()
+    monkeypatch.setattr(llm, "AsyncOpenAI", factory)
+    llm.client()
+    assert factory.call_args.kwargs["api_key"] == "legacy-key"
+
+
 @pytest.mark.parametrize(
     "kind,status",
-    [("timeout", 504), ("rate", 429), ("connection", 502), ("api", 502), ("empty", 502)],
+    [("timeout", 504), ("rate", 429), ("connection", 502), ("api", 503), ("empty", 502)],
 )
 def test_llm_errors(monkeypatch, kind, status):
     req = httpx.Request("POST", "https://example.invalid")
@@ -170,3 +199,66 @@ def test_rag_unavailable(monkeypatch):
     with pytest.raises(HTTPException) as e:
         rag.search(MagicMock(), 1, "x", encoder)
     assert e.value.status_code == 503
+
+
+def test_llm_function_call_contract(monkeypatch):
+    from app.services.tools import DEFINITIONS
+
+    result = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(
+                    content=None,
+                    tool_calls=[
+                        SimpleNamespace(
+                            id="call-1",
+                            function=SimpleNamespace(
+                                name="list_my_access_requests", arguments="{}"
+                            ),
+                        )
+                    ],
+                )
+            )
+        ],
+        usage=None,
+    )
+    create = mock_llm(monkeypatch, result)
+    answer = asyncio.run(
+        llm.complete([{"role": "user", "content": "Мои заявки"}], tools=DEFINITIONS)
+    )
+    assert answer.content == ""
+    assert answer.tool_calls == [
+        {"id": "call-1", "name": "list_my_access_requests", "arguments": "{}"}
+    ]
+    assert create.call_args.kwargs["tool_choice"] == "auto"
+    assert len(create.call_args.kwargs["tools"]) == len(DEFINITIONS)
+    assert all(t["function"]["parameters"]["additionalProperties"] is False for t in DEFINITIONS)
+
+
+def test_rag_expands_known_conflict_with_acl(monkeypatch):
+    monkeypatch.setattr(settings, "rag_min_score", 0.8)
+    a = SimpleNamespace(id=1, content="Один согласующий")
+    b = SimpleNamespace(id=2, content="Два согласующих")
+
+    def doc(number, rule):
+        return SimpleNamespace(
+            id=number,
+            title=f"Версия {number}",
+            source=f"demo/{number}",
+            document_metadata={"conflict_group": "review", "rule": rule},
+        )
+
+    db = MagicMock()
+    db.execute.return_value.all.side_effect = [
+        [(a, doc(1, "one"), 0.1)],
+        [(a, doc(1, "one"), 0.1), (b, doc(2, "two"), 0.3)],
+    ]
+    sources, contexts = rag.search(db, 1, "Code Review", FakeEncoder())
+    assert len(sources) == 2 and rag.conflict(contexts)
+    assert sources[1].score == 0.7
+    sql = str(db.execute.call_args.args[0].compile(dialect=postgresql.dialect()))
+    assert (
+        "team_id" in sql
+        and "is_public IS true" in sql
+        and "conflict_group" in str(db.execute.call_args.args[0].compile().params)
+    )
